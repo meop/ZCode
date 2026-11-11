@@ -126,6 +126,35 @@ describe("shared ZCode credentials", () => {
     }
   });
 
+  it("replaces a credential only while its expected plaintext value is still current", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zcode-auth-compare-save-"));
+    const store = createSharedZCodeCredentialStore({ baseDir: dir, env: TEST_ENV });
+
+    try {
+      await store.save("oauth:zai:access_token", "oauth-a");
+
+      await expect(
+        store.saveIfValue("oauth:zai:access_token", "oauth-stale", "platform-a"),
+      ).resolves.toBe(false);
+      await expect(store.load("oauth:zai:access_token")).resolves.toBe("oauth-a");
+      await expect(store.saveIfValue("missing", "oauth-a", "platform-a")).resolves.toBe(false);
+      await expect(store.load("missing")).resolves.toBeNull();
+      await expect(
+        store.saveIfValue("oauth:zai:access_token", "oauth-a", "platform-a"),
+      ).resolves.toBe(true);
+      await expect(store.load("oauth:zai:access_token")).resolves.toBe("platform-a");
+      // two racing swaps of the same token: exactly one wins
+      await store.save("oauth:zai:access_token", "oauth-b");
+      const results = await Promise.all([
+        store.saveIfValue("oauth:zai:access_token", "oauth-b", "platform-b1"),
+        store.saveIfValue("oauth:zai:access_token", "oauth-b", "platform-b2"),
+      ]);
+      expect(results.filter(Boolean)).toHaveLength(1);
+    } finally {
+      await rm(dir, { force: true, recursive: true });
+    }
+  });
+
   it("publishes a replacement credential and removes legacy keys in one mutation", async () => {
     const dir = await mkdtemp(join(tmpdir(), "zcode-auth-replace-"));
     const store = createSharedZCodeCredentialStore({
@@ -511,6 +540,72 @@ describe("Coding Plan API key resolver", () => {
     });
     for (const request of httpClient.requests.slice(2))
       expect(request.headers).toMatchObject({ authorization: "Bearer zai-biz-token" });
+  });
+
+  describe("ZAI platform JWT", () => {
+    const jwt = (claims: object) =>
+      `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
+    const oauth = jwt({ client_id: "zcode", exp: Math.floor(Date.now() / 1000) + 3600 });
+    const platform = jwt({ user_id: "u1", exp: Math.floor(Date.now() / 1000) + 86_400 });
+    const keys = () =>
+      jsonResponse({ code: 200, data: [{ apiKey: "zai-api-key", name: "zcode-api-key" }] });
+    const projectToken = () =>
+      jsonResponse({
+        code: 200,
+        data: {
+          accessToken: "project-token",
+          tokenType: "Bearer",
+          expiresIn: 600,
+          expiresAt: Math.floor(Date.now() / 1000) + 600,
+        },
+      });
+    const LOGIN = "https://api.z.ai/api/auth/z/login";
+
+    it("returns the platform JWT an OAuth token was exchanged for", async () => {
+      const httpClient = new FakeHttpClient([
+        jsonResponse({ code: 0, data: { access_token: platform } }),
+        customerInfoResponse(),
+        keys(),
+        projectToken(),
+      ]);
+      await expect(
+        createCodingPlanApiKeyResolver({ httpClient }).resolveMaterial({
+          accessToken: oauth,
+          family: "zai",
+        }),
+      ).resolves.toMatchObject({ token: "project-token", zaiBusinessToken: platform });
+      expect(httpClient.requests[0]?.url).toBe(LOGIN);
+    });
+
+    it("uses a stored platform JWT without exchanging it", async () => {
+      const httpClient = new FakeHttpClient([customerInfoResponse(), keys(), projectToken()]);
+      await expect(
+        createCodingPlanApiKeyResolver({ httpClient }).resolveMaterial({
+          accessToken: platform,
+          family: "zai",
+        }),
+      ).resolves.toMatchObject({ token: "project-token", zaiBusinessToken: platform });
+      expect(httpClient.requests.map((request) => request.url)).not.toContain(LOGIN);
+      expect(httpClient.requests[0]?.headers).toMatchObject({ authorization: platform });
+    });
+
+    it("exchanges a token taken for a platform JWT once the business API rejects it", async () => {
+      const exchanged = jwt({ user_id: "u1", exp: Math.floor(Date.now() / 1000) + 86_400, n: 2 });
+      const httpClient = new FakeHttpClient([
+        jsonResponse({ code: 401 }, 401),
+        jsonResponse({ code: 0, data: { access_token: exchanged } }),
+        customerInfoResponse(),
+        keys(),
+        projectToken(),
+      ]);
+      await expect(
+        createCodingPlanApiKeyResolver({ httpClient }).resolveMaterial({
+          accessToken: platform,
+          family: "zai",
+        }),
+      ).resolves.toMatchObject({ zaiBusinessToken: exchanged });
+      expect(httpClient.requests.map((request) => request.url)[1]).toBe(LOGIN);
+    });
   });
 
   it("resolves a BigModel OAuth access token through project access token issuance", async () => {

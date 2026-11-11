@@ -111,6 +111,7 @@ export async function loginZCodeCli(
     );
     // 已取消或已超时的登录不能把迟到的 ready 响应写入凭据。
     throwIfAborted(signal);
+    const zaiAccessToken = providerId === "zai" ? zaiPlatformToken(material) : undefined;
     // Z.ai 以账号用户 ID 作为连接身份；BigModel 的项目令牌按组织与项目签发，
     // 连接身份沿用组织与项目的稳定摘要，与运行时的令牌缓存范围一致。
     const accountIdentity =
@@ -120,9 +121,9 @@ export async function loginZCodeCli(
             JSON.stringify([material.organizationId, material.projectId]),
           );
     try {
-      if (providerId === "zai") {
+      if (zaiAccessToken !== undefined) {
         await credentialStore.saveZaiLoginCredentials({
-          accessToken: readyData.accessToken,
+          accessToken: zaiAccessToken,
           jwtToken: readyData.token,
           user: readyData.user,
         });
@@ -258,4 +259,18 @@ async function resolveCodingPlanMaterial(input: {
     },
     { signal: input.signal },
   );
+}
+
+/**
+ * Z.ai sign-in stores the platform JWT, as the desktop app does: it lasts months, the OAuth token
+ * an hour with no refresh, and each exchange of it counts against Z.ai's limit.
+ */
+function zaiPlatformToken(material: { zaiBusinessToken?: string }): string {
+  const token = material.zaiBusinessToken?.trim();
+  if (!token)
+    throw new ZCodeCliLoginError(
+      "auth_failed",
+      "Z.ai sign-in returned no platform token. Please retry login.",
+    );
+  return token;
 }

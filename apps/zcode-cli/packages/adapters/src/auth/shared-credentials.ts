@@ -48,6 +48,8 @@ export interface SharedZCodeCredentialStore {
   clearZaiLoginCredentials(): Promise<void>;
   delete(key: string): Promise<void>;
   deleteIfValue(key: string, expectedValue: string): Promise<boolean>;
+  /** Writes `value` only while `key` still holds `expectedValue`, under the file lock. */
+  saveIfValue(key: string, expectedValue: string, value: string): Promise<boolean>;
   deleteIfValues(
     expectedValues: Readonly<Record<string, string>>,
   ): Promise<Record<string, boolean>>;
@@ -112,6 +114,20 @@ export function createSharedZCodeCredentialStore(
         deleted = true;
       });
       return deleted;
+    },
+
+    async saveIfValue(key: string, expectedValue: string, value: string): Promise<boolean> {
+      const validatedKey = validateCredentialKey(key);
+      const validatedExpectedValue = validateCredentialValue(expectedValue);
+      const encryptedValue = cipher.encrypt(validateCredentialValue(value));
+      let saved = false;
+      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
+        const current = rawCredentials[validatedKey];
+        if (current === undefined || cipher.decrypt(current) !== validatedExpectedValue) return;
+        rawCredentials[validatedKey] = encryptedValue;
+        saved = true;
+      });
+      return saved;
     },
 
     async deleteIfValues(
