@@ -300,6 +300,15 @@ export type CommandCenterApp = {
 
 export type CommandCenterDeps = {
   forkApp?: (targetCheckpointId?: string) => Promise<CommandCenterForkResult>;
+  readCodingPlanStatus?: () => Promise<import("@zcode/bootstrap").CodingPlanStatus>;
+  readCodingPlanStats?: (
+    days: number,
+  ) => Promise<import("@zcode/bootstrap").CodingPlanHistory | undefined>;
+  readCodingPlanUsage?: () => Promise<import("@zcode/bootstrap").CodingPlanUsage>;
+  readCodingPlanResets?: () => Promise<import("@zcode/bootstrap").CodingPlanResetsResult>;
+  useCodingPlanReset?: (
+    resetType: import("@zcode/bootstrap").CodingPlanResetType,
+  ) => Promise<import("@zcode/bootstrap").CodingPlanResets>;
   getApp(): Promise<CommandCenterApp>;
   getLocale?: () => TuiSubmitPromptResult["locale"];
   getMode?: () => CommandCenterMode;

@@ -23,6 +23,7 @@ type TuiApplyResultInput = {
     model: string;
   };
   modifiedFileToolCallIds: Set<string>;
+  onExit: (code: number) => void;
   setActiveTurnId: (turnId: TurnId | undefined) => void;
   setCacheStats: React.Dispatch<React.SetStateAction<CacheStats | undefined>>;
   setContextUsage: React.Dispatch<React.SetStateAction<ContextUsage>>;
@@ -50,6 +51,10 @@ type TuiApplyResultInput = {
 export function useTuiApplyResult(input: TuiApplyResultInput) {
   return React.useCallback(
     (result: TuiSubmitPromptResult, preserveTurnState = false) => {
+      if (result.exit) {
+        input.onExit(0);
+        return;
+      }
       const resultCopy = getZCodeCopy(result.locale ?? input.fallback.locale).tui;
       input.setMode(result.mode ?? input.fallback.mode);
       input.setModel(result.model ?? input.fallback.model);

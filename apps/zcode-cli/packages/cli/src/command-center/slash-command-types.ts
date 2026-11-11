@@ -85,6 +85,24 @@ export type SlashCommand =
     }
   | {
       args: string;
+      name: "reset";
+      rawName: string;
+      type: "known";
+    }
+  | {
+      args: string;
+      name: "usage" | "status" | "stats";
+      rawName: string;
+      type: "known";
+    }
+  | {
+      args: string;
+      name: "exit";
+      rawName: string;
+      type: "known";
+    }
+  | {
+      args: string;
       name: "new";
       rawName: string;
       type: "known";

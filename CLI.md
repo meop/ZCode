@@ -42,7 +42,7 @@ upstream base; port patches onto a new branch for a newer upstream release.
 1. **build**: `scripts/cli.nu`, the workflows, `VERSION`, this readme, `.npmrc`, and a note at the end of `AGENTS.md`
 2. **Z.ai auth**: sign-in keeps the platform JWT, and the build defines the ZCode release
 3. **official identity**: official MCP servers and the Sites plugin without the desktop app
-4. **TUI commands**: `/exit`, `/usage`, `/reset`, and the app version in `zcode doctor`
+4. **TUI commands**: `/exit`, `/usage`, `/status`, `/stats`, `/reset`, and the app version in `zcode doctor`
 
 ## The script
 
@@ -96,10 +96,13 @@ runs upstream's checks.
   the command endpoint `zcode-site` talks to. Each request reads one credential snapshot; identity goes only to a
   trusted official origin; the Coding Plan token goes only as the platform JWT, and only for a personal plan of the
   signed-in user.
-- **TUI commands**: `/exit` (alias `/quit`) closes the TUI as a confirmed Ctrl-C does. `/usage` (alias `/status`)
-  shows the subscription, the 5-hour and weekly token windows, the monthly tool and official MCP calls with their use
-  and resets, the window resets granted, and the last 7 days' tokens by model, from the endpoints the desktop app's
-  usage panel reads; a part whose endpoint fails is left out. `/reset` lists the window resets granted, after asking
+- **TUI commands**: `/exit` (alias `/quit`) closes the TUI as a confirmed Ctrl-C does. `/usage`
+  shows only the current 5-hour and weekly token windows, monthly tool calls and official MCP calls with their use
+  and reset times. `/status` shows the subscription, billing cycle and renewal/end date. `/stats [days]` defaults to
+  the last 7 days (including today), accepts 1–30, and shows token/call totals and tokens by model.
+  These commands start with descriptive titles; statistics omit hourly and empty time rows. Each command fetches
+  only its own data. Quota and history failures are shown;
+  optional MCP data is left out if unavailable. `/reset` lists the window resets granted, after asking
   the server whether a new one is due as the desktop app does; `/reset 5h|week` says what it would spend, and adding
   `now` spends one (`bootstrap/src/app/coding-plan-usage.ts`). `zcode doctor` shows the ZCode release as
   `app version`, under the CLI's `version`.
