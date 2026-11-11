@@ -108,3 +108,13 @@ export {
 } from "./app/bundled-plugins.js";
 // 嵌入式调用复用产品请求装配，避免来源头与网络配置漂移。
 export { createRuntimeAiSdkModelExecutionConfig } from "./model-config.js";
+export {
+  readCodingPlanResets,
+  readCodingPlanUsage,
+  useCodingPlanReset,
+  type CodingPlanResets,
+  type CodingPlanResetsResult,
+  type CodingPlanResetType,
+  type CodingPlanUsage,
+  type CodingPlanUsageLimit,
+} from "./app/coding-plan-usage.js";

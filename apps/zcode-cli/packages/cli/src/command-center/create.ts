@@ -1,5 +1,13 @@
 import type { TuiSubmitPrompt } from "@zcode/tui";
 import {
+  formatCodingPlanResets,
+  formatCodingPlanUsage,
+  formatResetConfirmation,
+  formatResetUsed,
+  parseResetCommand,
+  RESET_USAGE,
+} from "./usage-command.js";
+import {
   formatAvailableCommandNames,
   listCustomCommandsForHelp,
 } from "../command-center-custom.js";
@@ -301,6 +309,44 @@ export function createCommandCenter(deps: CommandCenterDeps): TuiSubmitPrompt {
 
       if (command.name === "goal") {
         return handleTargetCommand(command.args, deps, options);
+      }
+
+      if (command.name === "reset") {
+        const reset = parseResetCommand(command.args);
+        const respond = (response: string) => ({ mode: deps.getMode?.(), response });
+        if (reset.action === "usage-error") return respond(RESET_USAGE);
+        if (!deps.readCodingPlanResets || !deps.useCodingPlanReset)
+          return respond("Resets are not available in this client.");
+        try {
+          if (reset.action === "show") return respond(formatCodingPlanResets(await deps.readCodingPlanResets()));
+          if (reset.action === "confirm")
+            return respond(
+              formatResetConfirmation((await deps.readCodingPlanResets()).resets, reset.resetType),
+            );
+          return respond(formatResetUsed(await deps.useCodingPlanReset(reset.resetType), reset.resetType));
+        } catch (error) {
+          return respond(error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      if (command.name === "usage") {
+        if (!deps.readCodingPlanUsage)
+          return { mode: deps.getMode?.(), response: "Usage is not available in this client." };
+        try {
+          return {
+            mode: deps.getMode?.(),
+            response: formatCodingPlanUsage(await deps.readCodingPlanUsage()),
+          };
+        } catch (error) {
+          return {
+            mode: deps.getMode?.(),
+            response: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+
+      if (command.name === "exit") {
+        return { mode: deps.getMode?.(), response: "", exit: true };
       }
 
       if (command.name === "new") {

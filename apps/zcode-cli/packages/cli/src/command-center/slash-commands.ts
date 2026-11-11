@@ -157,6 +157,33 @@ export function parseSlashCommand(input: string): SlashCommand | null {
     };
   }
 
+  if (rawName === "reset") {
+    return {
+      args,
+      name: "reset",
+      rawName,
+      type: "known",
+    };
+  }
+
+  if (rawName === "usage" || rawName === "status") {
+    return {
+      args,
+      name: "usage",
+      rawName,
+      type: "known",
+    };
+  }
+
+  if (rawName === "exit" || rawName === "quit") {
+    return {
+      args,
+      name: "exit",
+      rawName,
+      type: "known",
+    };
+  }
+
   if (rawName === "new" || rawName === "clear") {
     return {
       args,

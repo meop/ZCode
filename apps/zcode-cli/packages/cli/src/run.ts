@@ -9,6 +9,7 @@ import { getRuntimeInfo, type PresentationSurface } from "@zcode/core";
 import { color, formatJson, supportsColor } from "@zcode/core";
 import { getZCodeCopy, isUiLocale, type UiLocale } from "@zcode/i18n";
 import type { RunContext, GlobalOptions, GlobalOutputFormat } from "@zcode/shared-types";
+import { ZCODE_VERSION } from "@zcode/shared";
 import {
   applyCliRuntimeEnvSanitization,
   loadCliDotenv,
@@ -210,6 +211,8 @@ const runDoctor = (ctx: RunContext, options: GlobalOptions, workingDirectory: st
     cli: {
       name: CLI_COMMAND_NAME,
       processName: CLI_PROCESS_NAME,
+      // the ZCode release the CLI comes from, which Z.ai's servers see; version is the CLI's own
+      appVersion: ZCODE_VERSION,
       version,
     },
     runtime: {
@@ -235,6 +238,7 @@ const runDoctor = (ctx: RunContext, options: GlobalOptions, workingDirectory: st
   const colors = supportsColor(ctx.stdout, options.noColor);
   ctx.stdout.write(`${color.bold("zcode doctor", colors)}\n`);
   ctx.stdout.write(`version: ${payload.cli.version}\n`);
+  ctx.stdout.write(`app version: ${payload.cli.appVersion}\n`);
   ctx.stdout.write(`process: ${payload.runtime.processTitle}\n`);
   ctx.stdout.write(`node: ${payload.runtime.node}\n`);
   ctx.stdout.write(`platform: ${payload.runtime.platform}/${payload.runtime.arch}\n`);
