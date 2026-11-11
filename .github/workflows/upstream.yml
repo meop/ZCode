@@ -1,0 +1,43 @@
+# Opens an issue when upstream tags a release with no cli/v<upstream> branch here yet.
+# Porting and verification happen in the version worktree before publication (CLI.md).
+# Scheduled workflows run from the default branch.
+name: upstream
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UPSTREAM: zai-org/ZCode
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: new upstream releases
+        run: |
+          versions=()
+          tag=$(gh api "repos/$UPSTREAM/tags?per_page=1" --jq '.[0].name // empty')
+          [ -n "$tag" ] && versions+=("${tag#v}")
+          for version in $(printf '%s\n' "${versions[@]}" | sort -u); do
+            branch="cli/v$version"
+            if gh api "repos/$GITHUB_REPOSITORY/branches/$branch" > /dev/null 2>&1; then
+              echo "$branch exists"
+              continue
+            fi
+            title="upstream ZCode v$version has no $branch branch"
+            if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json title \
+              --jq '.[].title' | grep -qxF "$title"; then
+              echo "already open: $title"
+              continue
+            fi
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body \
+              "Upstream $UPSTREAM has v$version (tag: $tag). Make \`$branch\` from it by cherry-picking the newest cli/v* branch's commits, with fixups and tests, as CLI.md describes."
+          done
