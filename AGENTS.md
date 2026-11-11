@@ -83,3 +83,11 @@ App 业务单测已退役，不新增或恢复 App 业务单测 test/spec 或 `c
 - `info` 用于进程和会话生命周期、权限结果、一次性初始化等生产可用事件。
 - `warn` 用于可恢复异常；`error` 用于崩溃、握手失败、鉴权丢失等不可恢复错误。
 - 不在日志、示例或提交中写入凭据、真实用户数据和内部服务地址。
+
+## zcode-cli
+
+This branch is [meop/ZCode](https://github.com/meop/ZCode)'s zcode-cli patch stack on one upstream ZCode release: it
+builds the CLI as a single executable and patches it to run without the desktop app. `CLI.md` describes its branches
+(`cli/v<upstream>`, one clean patch stack per upstream release), how `VERSION` drives releases (tagged
+`zcode-cli-v<VERSION>`), how the next branch is made by cherry-picking this one's commits, `scripts/cli.nu`, and each
+patch.

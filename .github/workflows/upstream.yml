@@ -1,0 +1,47 @@
+# Opens an issue when upstream ZCode has a release with no cli/v<upstream> branch here yet: its newest tag, and the
+# version its latest source sync names (Z.ai publishes the source shortly before tagging). The branch is made by hand,
+# by cherry-picking the newest branch's stack onto the new release and testing as it goes (CLI.md). It runs from the
+# default branch, where GitHub runs scheduled workflows.
+name: upstream
+
+on:
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UPSTREAM: zai-org/ZCode
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: new upstream releases
+        run: |
+          versions=()
+          tag=$(gh api "repos/$UPSTREAM/tags?per_page=1" --jq '.[0].name // empty')
+          [ -n "$tag" ] && versions+=("${tag#v}")
+          synced=$(gh api "repos/$UPSTREAM/commits?per_page=1" --jq '.[0].commit.message' \
+            | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+          [ -n "$synced" ] && versions+=("${synced#v}")
+          for version in $(printf '%s\n' "${versions[@]}" | sort -u); do
+            branch="cli/v$version"
+            if gh api "repos/$GITHUB_REPOSITORY/branches/$branch" > /dev/null 2>&1; then
+              echo "$branch exists"
+              continue
+            fi
+            title="upstream ZCode v$version has no $branch branch"
+            if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json title \
+              --jq '.[].title' | grep -qxF "$title"; then
+              echo "already open: $title"
+              continue
+            fi
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body \
+              "Upstream $UPSTREAM has v$version (tagged: $( [ "$tag" = "v$version" ] && echo yes || echo 'not yet, source synced')). Make \`$branch\` from it by cherry-picking the newest cli/v* branch's commits, with fixups and tests, as CLI.md describes."
+          done
