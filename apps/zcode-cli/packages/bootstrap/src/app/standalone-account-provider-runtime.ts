@@ -193,7 +193,10 @@ export async function hasStandaloneCodingPlanAccess(
 }
 
 export function createStandaloneProviderRuntimeHeadersPort(
-  credentialStore: Pick<SharedZCodeCredentialStore, "load" | "loadMany" | "save" | "delete">,
+  credentialStore: Pick<
+    SharedZCodeCredentialStore,
+    "load" | "loadMany" | "save" | "delete" | "updateMany"
+  >,
   env: Readonly<Record<string, string | undefined>>,
   injectedResolver?: ReturnType<typeof createCodingPlanApiKeyResolver>,
 ): ProviderRuntimeHeadersPort & {
@@ -247,7 +250,7 @@ export function createStandaloneProviderRuntimeHeadersPort(
       const sourceKey = standaloneAccountAuthSourceCredentialKey(providerId);
       const source = await credentialStore.load(sourceKey);
       const oauthKey = oauthCredentialKey(family);
-      const oauth =
+      let oauth =
         source === "manual" ? undefined : (await credentialStore.load(oauthKey))?.trim();
       const useOAuth = source === "oauth" || (source !== "manual" && Boolean(oauth));
       let apiKey: string | undefined;
@@ -282,6 +285,27 @@ export function createStandaloneProviderRuntimeHeadersPort(
         );
         apiKey = material.token;
         apiKeyId = material.apiKeyId;
+        // Z.ai: store the platform JWT in place of the OAuth token it came from, as the desktop
+        // app does, only while the OAuth token is still the stored one. A newer login wins.
+        const platform = material.zaiBusinessToken;
+        if (family === "zai" && platform && platform !== oauth) {
+          input.abortSignal?.throwIfAborted();
+          if (
+            !(await credentialStore.updateMany(
+              { [oauthKey]: platform },
+              { expected: { [oauthKey]: oauth } },
+            )) &&
+            (await credentialStore.load(oauthKey))?.trim() !== platform
+          ) {
+            resolver.clear();
+            throw new Error("project_token_scope_invalidated");
+          }
+          oauth = platform;
+          accountScope = createHash("sha256")
+            .update(JSON.stringify([providerId, family, currentIdentity, oauth]))
+            .digest("hex");
+          authSnapshots.set(oauthKey, oauth);
+        }
         // 请求期只交付当前账号的 Token；迟到签发不能覆盖已退出/切换的登录态。
         if (
           (await credentialStore.load(oauthKey))?.trim() !== oauth ||

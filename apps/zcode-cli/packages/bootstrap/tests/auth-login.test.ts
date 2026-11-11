@@ -225,8 +225,9 @@ describe("ZCode CLI login", () => {
           name: "Alice",
         },
       });
+      // Z.ai sign-in stores the platform JWT the exchange returned, not the hour-long OAuth token
       expect(await credentialStore.load(SHARED_ZCODE_CREDENTIAL_KEYS.zaiAccessToken)).toBe(
-        "zai-access-token",
+        "zai-biz-token",
       );
       expect(await credentialStore.load(SHARED_ZCODE_CREDENTIAL_KEYS.zcodeJwtToken)).toBe(
         "jwt-token",
@@ -562,6 +563,8 @@ describe("ZCode CLI login", () => {
                   apiKeyId: "key",
                   organizationId: "org",
                   projectId: "project",
+                  // the real resolver returns the platform JWT it exchanged for, which Z.ai sign-in stores
+                  ...(providerId === "zai" ? { zaiBusinessToken: "new-platform" } : {}),
                 };
               },
             },
