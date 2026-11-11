@@ -1,0 +1,126 @@
+# zcode-cli releases from VERSION, as meop's other projects do. Each cli/v<upstream> branch holds the patch stack on
+# that upstream ZCode release, and VERSION is that upstream version. A push whose VERSION has no tag yet builds every
+# target and releases that commit, tagged zcode-cli-v<VERSION> (the fork keeps upstream's own v<semver> tags) and
+# titled v<VERSION>; a VERSION with a pre-release part (3.18.0-alpha.1) is published as a pre-release.
+name: release
+
+on:
+  push:
+    branches:
+      - 'cli/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+env:
+  UPSTREAM: zai-org/ZCode
+  NU_VERSION: 0.116.1
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "VERSION $version is not <upstream semver> or <upstream semver>-<pre-release>"
+            exit 1
+          fi
+          release=true
+          if gh release view "zcode-cli-v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "zcode-cli-v$version is already released"
+            release=false
+          fi
+          prerelease=false
+          [[ "$version" == *-* ]] && prerelease=true
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # one linux machine cross-builds linux and windows
+          - os: ubuntu-latest
+            targets: linux-x64,linux-arm64,win-x64,win-arm64
+          # macos binaries are built on macos, where upstream's build signs them ad hoc; arm64 macos won't run one
+          # built elsewhere until it is signed again
+          - os: macos-latest
+            targets: darwin-arm64,darwin-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.14.0
+      - uses: hustcer/setup-nu@v3
+        with:
+          version: ${{ env.NU_VERSION }}
+      - name: pnpm, at the version package.json pins
+        run: npm install --global "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+      - run: nu scripts/cli.nu deps
+      - run: nu scripts/cli.nu build
+      - run: nu scripts/cli.nu bin --targets ${{ matrix.targets }}
+      - run: nu scripts/cli.nu package --targets ${{ matrix.targets }} --version "$VERSION"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: zcode-cli-${{ matrix.os }}
+          path: apps/zcode-cli/packages/cli/dist/release/*
+          compression-level: 0
+          if-no-files-found: error
+
+  release:
+    needs: [version, build]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.version.outputs.version }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: release
+          merge-multiple: true
+      - name: checksums
+        working-directory: release
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: release
+        run: |
+          base="v${VERSION%%-*}"
+          if gh api "repos/$UPSTREAM/git/ref/tags/$base" > /dev/null 2>&1; then
+            upstream="[${UPSTREAM} ${base}](https://github.com/${UPSTREAM}/releases/tag/${base})"
+          else
+            upstream="${UPSTREAM} ${base}, not yet tagged upstream"
+          fi
+          cat > notes.md <<EOF
+          The ZCode CLI from ${upstream}, built as a single executable with Node and its assets inside, from this fork's \`${GITHUB_REF_NAME}\` branch (\`${GITHUB_SHA}\`) and its patches, which CLI.md describes.
+
+          Verify downloads with the attached SHA256SUMS.
+          EOF
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "zcode-cli-v$VERSION" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes-file notes.md \
+            "${flags[@]}"
