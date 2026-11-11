@@ -151,6 +151,8 @@ export type TuiRestoredTranscriptPart =
 
 export type TuiSubmitPromptResult = {
   effortOptions?: readonly TuiEffortOption[];
+  /** `/exit`: close the TUI as a confirmed Ctrl-C does. */
+  exit?: boolean;
   modelOptions?: readonly TuiModelOption[];
   locale?: SupportedLocale;
   loginRequired?: boolean;

@@ -34,6 +34,40 @@ export const BUILTIN_ZCODE_SLASH_COMMAND_HELP_ENTRIES: readonly BuiltinZCodeSlas
     usage: "/logout",
   },
   {
+    aliases: ["quit"],
+    details: ["Closes the TUI, as pressing Ctrl-C twice does. The session is saved and resumable."],
+    name: "exit",
+    summary: "Exit ZCode.",
+    usage: "/exit",
+  },
+  {
+    details: ["Shows current 5-hour, weekly, monthly tool and official MCP quotas, with use and reset times."],
+    name: "usage",
+    summary: "Show current Coding Plan quotas.",
+    usage: "/usage",
+  },
+  {
+    details: ["Shows the subscription name, version, billing cycle and renewal or end date."],
+    name: "status",
+    summary: "Show Coding Plan subscription details.",
+    usage: "/status",
+  },
+  {
+    details: ["Defaults to the last 7 calendar days including today; accepts 1–30 days. Shows token and call totals, and tokens by model."],
+    name: "stats",
+    summary: "Show recent Coding Plan statistics.",
+    usage: "/stats [days]",
+  },
+  {
+    details: [
+      "Lists the 5-hour and weekly window resets the plan has granted, after asking the server whether a new one is due, as the desktop app does.",
+      "/reset 5h or /reset week says what it would spend; add now to spend one, which clears that window.",
+    ],
+    name: "reset",
+    summary: "Show or spend Coding Plan window resets.",
+    usage: "/reset [5h|week] [now]",
+  },
+  {
     details: ["Runs the core manual compaction path and forwards optional summary instructions."],
     name: "compact",
     summary: "Compact the current conversation with optional instructions.",

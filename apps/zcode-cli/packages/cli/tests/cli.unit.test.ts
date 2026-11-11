@@ -2668,6 +2668,36 @@ test("parses built-in slash commands outside the TUI", () => {
     rawName: "clear",
     type: "known",
   });
+  assert.deepEqual(parseSlashCommand("/exit"), {
+    args: "",
+    name: "exit",
+    rawName: "exit",
+    type: "known",
+  });
+  assert.deepEqual(parseSlashCommand("/quit"), {
+    args: "",
+    name: "exit",
+    rawName: "quit",
+    type: "known",
+  });
+  assert.deepEqual(parseSlashCommand("/usage"), {
+    args: "",
+    name: "usage",
+    rawName: "usage",
+    type: "known",
+  });
+  assert.deepEqual(parseSlashCommand("/stats 14"), {
+    args: "14",
+    name: "stats",
+    rawName: "stats",
+    type: "known",
+  });
+  assert.deepEqual(parseSlashCommand("/status"), {
+    args: "",
+    name: "status",
+    rawName: "status",
+    type: "known",
+  });
   assert.deepEqual(parseSlashCommand("/mode yolo"), {
     args: "yolo",
     name: "mode",
@@ -6017,7 +6047,7 @@ test("prints JSON for doctor command", async () => {
     setCliProcessTitle();
     const exitCode = await run(ctx);
     const payload = JSON.parse(ctx.stdout.output()) as {
-      cli: { name: string; processName: string };
+      cli: { appVersion: string; name: string; processName: string };
       packaging: { default: string; sea: string };
       runtime: { node: string; processTitle: string };
     };
@@ -6025,6 +6055,7 @@ test("prints JSON for doctor command", async () => {
     assert.equal(exitCode, 0);
     assert.equal(payload.cli.name, "zcode");
     assert.equal(payload.cli.processName, CLI_PROCESS_NAME);
+    assert.equal(typeof payload.cli.appVersion, "string");
     assert.equal(payload.runtime.node, process.version);
     assert.equal(payload.runtime.processTitle, CLI_PROCESS_NAME);
     assert.equal(payload.packaging.default, "node-bundle");
@@ -6045,6 +6076,7 @@ test("prints human doctor details with verbose diagnostics", async () => {
 
     assert.equal(exitCode, 0);
     assert.match(output, /zcode doctor/);
+    assert.match(output, /^version: .+\napp version: .+$/m);
     assert.match(output, /process: zcode-cli/);
     assert.match(output, /execPath:/);
     assert.match(output, /cwd:/);
@@ -7214,4 +7246,46 @@ test("storage-migrate real entrypoint honors an isolated custom database and rej
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("account slash commands dispatch independently and reject invalid stats periods", async () => {
+  const calls: string[] = [];
+  const submit = createCommandCenter({
+    getApp: async () => {
+      throw new Error("should not create app");
+    },
+    resumeApp: async () => {
+      throw new Error("should not resume app");
+    },
+    readCodingPlanUsage: async () => {
+      calls.push("usage");
+      return { providerId: "p", family: "zai", level: null, limits: [] };
+    },
+    readCodingPlanStatus: async () => {
+      calls.push("status");
+      return { family: "zai", level: "lite" };
+    },
+    readCodingPlanStats: async (days) => {
+      calls.push(`stats:${days}`);
+      return { days, tokens: 0, calls: 0, models: [] };
+    },
+  });
+  const options = { abortSignal: new AbortController().signal };
+  assert.equal(
+    (await submit("/usage", options)).response,
+    "Coding Plan usage\nNo limits reported.",
+  );
+  assert.equal(
+    (await submit("/status", options)).response,
+    "Coding Plan status\nZ.ai Coding Plan (lite)",
+  );
+  assert.match((await submit("/stats", options)).response, /^Coding Plan statistics\nLast 7 days/);
+  assert.match(
+    (await submit("/stats 14", options)).response,
+    /^Coding Plan statistics\nLast 14 days/,
+  );
+  assert.match((await submit("/stats 0", options)).response, /^Usage: \/stats/);
+  assert.deepEqual(calls, ["usage", "status", "stats:7", "stats:14"]);
+  assert.match((await submit("/help status", options)).response, /^\/status\n/);
+  assert.match((await submit("/help stats", options)).response, /^\/stats \[days\]/);
 });
