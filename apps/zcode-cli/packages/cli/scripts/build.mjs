@@ -167,6 +167,9 @@ export const buildCli = async ({
   }),
 } = {}) => {
   const cliVersion = await version;
+  // The ZCode release this CLI comes from, which the desktop build also defines: the server
+  // checks it (Sites refuses the CLI's own 0.x as too old) and the shared ZCODE_VERSION reads it.
+  const zcodeVersion = await readRootPackageVersion({ root: resolve(rootDirectory, "../..") });
   const outfile = resolve(cliDirectory, "dist/zcode.cjs");
   const sourcemapFile = `${outfile}.map`;
 
@@ -183,6 +186,7 @@ export const buildCli = async ({
     bundle: true,
     define: {
       __CLI_VERSION__: JSON.stringify(cliVersion),
+      __ZCODE_VERSION__: JSON.stringify(zcodeVersion),
     },
     entryPoints: [resolve(cliDirectory, "src/main.ts")],
     // Ink 7 and yoga-layout use top-level await, so the CJS CLI bundle loads the TUI
