@@ -132,6 +132,8 @@ import {
 } from "../subagents.js";
 import { createRuntimeAiSdkModelExecutionConfig } from "../model-config.js";
 import { withOfficialCommandEnv } from "../official-command-endpoint/index.js";
+import { createStandaloneOfficialAuth } from "./standalone-official-auth.js";
+import { ZCODE_VERSION } from "@zcode/shared";
 import { ApiProviderModelRuntime } from "./provider-registry-model-runtime.js";
 import {
   completeAppStartup,
@@ -543,6 +545,22 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       startupTimer,
       storageRoot,
     });
+    // No host gave official identity (TUI, --prompt): answer it in-process instead.
+    const standaloneOfficialAuth =
+      options.officialCommandEnv === undefined &&
+      options.mcpPort === undefined &&
+      options.mcpPortFactory === undefined
+        ? createStandaloneOfficialAuth({
+            env: options.env,
+            network: {
+              httpProxy: configResult.config.network.httpProxy,
+              noProxy: configResult.config.network.noProxy,
+              caCertFile: configResult.config.network.caCertFile,
+            },
+            appVersion: ZCODE_VERSION,
+            logger,
+          })
+        : undefined;
     const rawMcpPort =
       options.mcpPort ??
       (runtimeConfig.mcp?.enabled === false
@@ -558,6 +576,9 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
               caCertFile: configResult.config.network.caCertFile,
             },
             nodeFallback: resolveMcpNodeFallbackProvider({ cliStorageRoot, logger }),
+            ...(standaloneOfficialAuth
+              ? { officialMcpAuth: standaloneOfficialAuth.officialMcpAuth }
+              : {}),
             workingDirectory,
           })));
     const mcpPort = rawMcpPort
@@ -597,7 +618,8 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         processEnv: options.env ?? process.env,
       });
     // 本 app 只服务一个 session：它的子进程统一带上这个 session 的官方命令端点 env。
-    const officialCommandEnv = options.officialCommandEnv;
+    const officialCommandEnv =
+      options.officialCommandEnv ?? standaloneOfficialAuth?.officialCommandEnv;
     const officialCommandIdentity = options.runtimeConfig?.memory?.workspaceIdentity;
     const officialCommandWorkspace = {
       workspacePath: workingDirectory,
@@ -1486,6 +1508,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
                 error: error instanceof Error ? error.message : String(error),
               });
             }
+            await standaloneOfficialAuth?.close().catch(() => undefined);
           }
         }
       },
