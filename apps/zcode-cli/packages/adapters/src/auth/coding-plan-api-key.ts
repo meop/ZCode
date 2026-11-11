@@ -31,6 +31,13 @@ export interface CodingPlanApiKeyResolverOptions {
   };
   observe?(event: { family: string; stage: "resolve"; code: string }): void;
 }
+/**
+ * The project token, and for Z.ai the platform JWT it was issued with. The caller stores that
+ * JWT as the access token in place of the OAuth token it came from, as the desktop app does.
+ */
+export type CodingPlanMaterial = ProjectAccessTokenMaterial & {
+  readonly zaiBusinessToken?: string;
+};
 export interface ResolveCodingPlanApiKeyInput {
   accessToken: string;
   family: CodingPlanFamily;
@@ -43,7 +50,7 @@ export interface CodingPlanApiKeyResolver {
   resolveMaterial(
     input: ResolveCodingPlanApiKeyInput,
     options?: HttpClientRunOptions,
-  ): Promise<ProjectAccessTokenMaterial>;
+  ): Promise<CodingPlanMaterial>;
   clear(): void;
 }
 export class CodingPlanApiKeyError extends Error {
@@ -92,9 +99,11 @@ export function createCodingPlanApiKeyResolver(
       });
     if (response.status === 401 && new URL(url).pathname.startsWith("/api/biz/")) {
       const run = execution.getStore();
+      // customer info takes the bare token, the key endpoints Bearer: a 401 on either rejects it
+      const authorization = new Headers(init.headers).get("Authorization");
       if (
         run?.business &&
-        new Headers(init.headers).get("Authorization") === `Bearer ${run.business.token}`
+        (authorization === run.business.token || authorization === `Bearer ${run.business.token}`)
       )
         businessTokens.invalidate(run.business);
     }
@@ -121,6 +130,21 @@ export function createCodingPlanApiKeyResolver(
       throw new ProjectAccessTokenError("project_token_invalid_response");
     }
   };
+  // Z.ai's OAuth token lasts an hour, has no refresh, and its exchange is rate limited; the
+  // platform JWT the exchange returns lasts months. The desktop app exchanges once at sign-in and
+  // stores the platform JWT as the access token (services zaiProviderAdapter); upstream's CLI
+  // stored the OAuth token and exchanged it in every process. A stored platform JWT, from either
+  // app, is used as is. If the business API rejects it, the bounded retry exchanges it after all,
+  // in case it was an OAuth token the check didn't recognise. Storing the JWT is the caller's,
+  // from the material's zaiBusinessToken, so it is written under the caller's own scope checks.
+  const exchangeBusiness = (stored: string, attempt: number): Promise<unknown> =>
+    attempt === 0 && isZaiPlatformToken(stored)
+      ? Promise.resolve({ code: 200, data: { access_token: stored } })
+      : request(`${ZAI_API_HOST}/api/auth/z/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: stored }),
+        });
   const client = new ProjectAccessTokenClient({
     request,
     observe: options.observe,
@@ -129,7 +153,7 @@ export function createCodingPlanApiKeyResolver(
   let generation = 0;
   const resolveMaterial = async (
     input: ResolveCodingPlanApiKeyInput,
-  ): Promise<ProjectAccessTokenMaterial> => {
+  ): Promise<CodingPlanMaterial> => {
     const oauth = input.accessToken.trim();
     if (!oauth) throw new CodingPlanApiKeyError("project_token_login_required");
     const capturedGeneration = generation;
@@ -140,13 +164,7 @@ export function createCodingPlanApiKeyResolver(
       const business =
         input.family === "zai"
           ? await businessTokens
-              .resolve(oauth, () =>
-                request(`${ZAI_API_HOST}/api/auth/z/login`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ token: oauth }),
-                }),
-              )
+              .resolve(oauth, () => exchangeBusiness(oauth, attempt))
               .catch(() => {
                 options.observe?.({
                   family: input.family,
@@ -172,7 +190,7 @@ export function createCodingPlanApiKeyResolver(
         });
         if (generation !== capturedGeneration)
           throw new CodingPlanApiKeyError("project_token_scope_invalidated");
-        return result;
+        return business ? { ...result, zaiBusinessToken: business.token } : result;
       } catch (error) {
         // 只恢复业务 JWT 的明确 HTTP 401；不把模型 401、403 或网络故障猜成过期。
         if (!business || !businessTokens.wasRejected(business)) throw error;
@@ -248,4 +266,21 @@ async function waitForProjectToken<T>(run: () => Promise<T>, signal?: AbortSigna
   });
   signal.throwIfAborted();
   return value;
+}
+
+/** The platform JWT is a JWT without the client_id claim Z.ai's OAuth access token carries. */
+export function isZaiPlatformToken(token: string): boolean {
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const claims = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as unknown;
+    return (
+      typeof claims === "object" &&
+      claims !== null &&
+      !Array.isArray(claims) &&
+      !("client_id" in claims)
+    );
+  } catch {
+    return false;
+  }
 }

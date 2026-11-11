@@ -76,6 +76,8 @@ export interface SharedZCodeCredentialStore {
   clearZaiLoginCredentials(): Promise<void>;
   delete(key: string): Promise<void>;
   deleteIfValue(key: string, expectedValue: string): Promise<boolean>;
+  /** Writes `value` only while `key` still holds `expectedValue`, under the file lock. */
+  saveIfValue(key: string, expectedValue: string, value: string): Promise<boolean>;
   deleteIfValues(
     expectedValues: Readonly<Record<string, string>>,
   ): Promise<Record<string, boolean>>;
@@ -266,6 +268,11 @@ export function createSharedZCodeCredentialStore(
         deleted = true;
       });
       return deleted;
+    },
+
+    async saveIfValue(key: string, expectedValue: string, value: string): Promise<boolean> {
+      // 3.18 的凭据加密可异步且有恢复代次屏障；条件更新必须走同一事务，避免绕过会话失效保护。
+      return updateMany({ [key]: value }, { expected: { [key]: expectedValue } });
     },
 
     async deleteIfValues(
