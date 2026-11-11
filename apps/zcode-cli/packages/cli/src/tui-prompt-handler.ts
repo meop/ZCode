@@ -1,3 +1,4 @@
+import { loadBootstrapModule } from "./bootstrap-loader.js";
 import type { ToolSearchMode } from "@zcode/contracts";
 import { getDefaultConfigPath, updateUiLocaleInFileConfig } from "@zcode/adapters/config";
 import type { SessionEvent } from "@zcode/contracts";
@@ -292,6 +293,33 @@ export function createTuiSubmitPrompt(
       await runtime.modelSelectionConfigRepository.saveConfiguredDefault(selection);
     },
     logout: () => logoutForTui(deps),
+    readCodingPlanStatus: async () =>
+      (await loadBootstrapModule()).readCodingPlanStatus({
+        runtime: await processRuntime.providerRegistryRuntimePromise,
+        env: deps.env ?? process.env,
+      }),
+    readCodingPlanStats: async (days) =>
+      (await loadBootstrapModule()).readCodingPlanStats({
+        runtime: await processRuntime.providerRegistryRuntimePromise,
+        env: deps.env ?? process.env,
+        days,
+      }),
+    readCodingPlanUsage: async () =>
+      (await loadBootstrapModule()).readCodingPlanUsage({
+        runtime: await processRuntime.providerRegistryRuntimePromise,
+        env: deps.env ?? process.env,
+      }),
+    readCodingPlanResets: async () =>
+      (await loadBootstrapModule()).readCodingPlanResets({
+        runtime: await processRuntime.providerRegistryRuntimePromise,
+        env: deps.env ?? process.env,
+      }),
+    useCodingPlanReset: async (resetType) =>
+      (await loadBootstrapModule()).useCodingPlanReset({
+        runtime: await processRuntime.providerRegistryRuntimePromise,
+        env: deps.env ?? process.env,
+        resetType,
+      }),
     setLocale: async (locale) => {
       if (app?.setLocale) {
         const result = await app.setLocale(locale);
