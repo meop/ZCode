@@ -11,3 +11,6 @@
 
 `--model` / `-m` 与 `--effort` 是字符串选项；模型和档位的有效性由调用方使用当前
 Provider Registry 校验。协议模式不消费这两个会话启动覆盖项。
+
+`CLI_ARGUMENT_OPTIONS` 只读导出实际 `parseArgs` 选项定义，供帮助覆盖检查使用；
+解析仍使用同一对象，不复制参数注册表。

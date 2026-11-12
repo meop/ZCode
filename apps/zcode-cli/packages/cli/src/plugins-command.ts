@@ -38,7 +38,7 @@ export type {
   PluginsCommandOverrides,
 } from "./plugins-command-shared.js";
 
-const PLUGINS_COMMAND_USAGE = `Usage: zcode plugins <command> [options]
+export const PLUGINS_COMMAND_USAGE = `Usage: zcode plugins <command> [options]
 
 Commands:
   list [--json] [--available]                  List installed plugins; --available also lists the marketplace catalog
