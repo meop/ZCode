@@ -15,13 +15,15 @@ export const zhCN: ZCodeCopy = {
 不传 command 时，zcode 会打开全屏 TUI。
 
 命令:
-  app-server 运行 ZCode Protocol stdio app server
-  commands   列出自定义 slash commands（\`commands list\`）
+  help       显示本帮助
+  app-server 运行 ZCode Protocol stdio app server（别名 agent-server）
+  commands [list|inspect <name>]  列出或检查自定义 slash commands
   doctor     检查运行时和打包假设
+  hooks trust <status|review|grant|revoke>  检查或管理工作区 hook 信任（详见下方）
   login [zai|bigmodel]  通过浏览器授权登录
   logout     删除共享的 Z.AI 登录凭据
   plugins    管理插件与市场（\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`；别名 plugin）
-  skills     列出本地 skills（\`skills list\`）
+  skills [list|inspect <name>]  列出或检查本地 skills
   tui        打开终端 UI
   version    打印 CLI 版本
 
@@ -50,27 +52,25 @@ export const zhCN: ZCodeCopy = {
   --target-replace 替换 --target 已存在的 goal
   --workflow-mode <mode>  prompt/TUI 的动态工作流：disabled、onDemand 或 alwaysOn（默认 disabled）
   -c, --continue        恢复当前目录最近的 session
+  --output-format <text|json|stream-json>  无头 prompt 输出格式（stream-json 输出 JSONL 事件）
   --json           在支持的命令中输出机器可读 JSON
   --no-browser     不打开浏览器，只打印 OAuth URL
   --no-color       禁用 ANSI 颜色
   --verbose        打印更多诊断信息
 
-Slash Commands:
-  /help [command]       显示 slash command 帮助
-  /login                使用 Z.AI OAuth 登录
-  /logout               删除共享的 Z.AI 登录凭据
-  /compact [instructions]  压缩当前对话
-  /expert [status|resume|stop|<task>]  运行或管理 expert workflow
-  /dwf [list|cancel|resume]  列出、取消或恢复 dynamic workflow run
-  /fork [latest|checkpointId]  从 workspace checkpoint 派生新 session
-  /mcp [list|status|connect|disconnect]  查看或管理 MCP servers
-  /mode [mode]          查看或切换权限模式：build、edit、plan、yolo 或 guarded
-  /model [id]           查看或切换当前 session 模型
-  /new                  在 TUI 中开始新 session
-  /resume [sessionId]   按 sessionId 恢复 session；省略时恢复当前 cwd 最新 session
-  /rewind [latest|checkpointId]  查看最新 checkpoint 或恢复 workspace 文件
-  /skill [name] [task]  列出 skills，或强制下一次 prompt 加载某个 skill
-  /goal [action]        查看或设置当前 session goal
+插件选项（具体命令用法见下方）:
+  -f, --force      卸载插件时跳过确认
+  -a, --all        禁用所有已启用插件
+  --available     plugins list 同时列出市场插件
+  --keep-data     卸载时保留插件数据
+  -s, --scope <user|project>  插件安装/启用范围（默认 user）
+  --sparse <path>  市场稀疏路径；可重复传入
+
+维护与协议兼容:
+  storage-migrate  准备 SQLite 存储并输出 JSON 报告，不接受参数
+  --prepare-storage  app-server：准备存储后退出，不启动 agent
+  --stdio         兼容选项；stdio 协议模式请使用 app-server
+
 `,
   },
   tui: {

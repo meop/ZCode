@@ -1,113 +1,115 @@
 import { parseArgs } from "node:util";
 
+export const CLI_ARGUMENT_OPTIONS = {
+  help: {
+    short: "h",
+    type: "boolean",
+  },
+  json: {
+    type: "boolean",
+  },
+  "output-format": {
+    type: "string",
+  },
+  "no-color": {
+    type: "boolean",
+  },
+  "no-browser": {
+    type: "boolean",
+  },
+  "browser-use": {
+    type: "string",
+  },
+  "browser-executable": {
+    type: "string",
+  },
+  prompt: {
+    short: "p",
+    type: "string",
+  },
+  model: { short: "m", type: "string" },
+  effort: { type: "string" },
+  "memory-bench": {
+    type: "boolean",
+  },
+  attach: {
+    multiple: true,
+    type: "string",
+  },
+  cwd: {
+    type: "string",
+  },
+  locale: {
+    type: "string",
+  },
+  resume: {
+    type: "string",
+  },
+  target: {
+    type: "string",
+  },
+  "target-replace": {
+    type: "boolean",
+  },
+  continue: {
+    short: "c",
+    type: "boolean",
+  },
+  force: {
+    short: "f",
+    type: "boolean",
+  },
+  "toolsearch-mode": { type: "string" },
+  "force-mcs": {
+    type: "boolean",
+  },
+  mode: {
+    type: "string",
+  },
+  verbose: {
+    type: "boolean",
+  },
+  version: {
+    short: "v",
+    type: "boolean",
+  },
+  "prepare-storage": { type: "boolean" },
+  stdio: {
+    type: "boolean",
+  },
+  surface: {
+    type: "string",
+  },
+  "workflow-mode": {
+    type: "string",
+  },
+  // `zcode plugins` 子命令旗标：strict 解析器要求
+  // 在全局注册，run.ts 收集后透传给 plugins-command，不污染其他命令的选项语义。
+  all: {
+    short: "a",
+    type: "boolean",
+  },
+  available: {
+    type: "boolean",
+  },
+  "keep-data": {
+    type: "boolean",
+  },
+  scope: {
+    short: "s",
+    type: "string",
+  },
+  sparse: {
+    multiple: true,
+    type: "string",
+  },
+} as const;
+
 export const parseGlobalArgs = (argv: string[]) =>
   parseArgs({
     allowPositionals: true,
     args: argv,
-    options: {
-      help: {
-        short: "h",
-        type: "boolean",
-      },
-      json: {
-        type: "boolean",
-      },
-      "output-format": {
-        type: "string",
-      },
-      "no-color": {
-        type: "boolean",
-      },
-      "no-browser": {
-        type: "boolean",
-      },
-      "browser-use": {
-        type: "string",
-      },
-      "browser-executable": {
-        type: "string",
-      },
-      prompt: {
-        short: "p",
-        type: "string",
-      },
-      model: { short: "m", type: "string" },
-      effort: { type: "string" },
-      "memory-bench": {
-        type: "boolean",
-      },
-      attach: {
-        multiple: true,
-        type: "string",
-      },
-      cwd: {
-        type: "string",
-      },
-      locale: {
-        type: "string",
-      },
-      resume: {
-        type: "string",
-      },
-      target: {
-        type: "string",
-      },
-      "target-replace": {
-        type: "boolean",
-      },
-      continue: {
-        short: "c",
-        type: "boolean",
-      },
-      force: {
-        short: "f",
-        type: "boolean",
-      },
-      "toolsearch-mode": { type: "string" },
-      "force-mcs": {
-        type: "boolean",
-      },
-      mode: {
-        type: "string",
-      },
-      verbose: {
-        type: "boolean",
-      },
-      version: {
-        short: "v",
-        type: "boolean",
-      },
-      "prepare-storage": { type: "boolean" },
-      stdio: {
-        type: "boolean",
-      },
-      surface: {
-        type: "string",
-      },
-      "workflow-mode": {
-        type: "string",
-      },
-      // `zcode plugins` 子命令旗标：strict 解析器要求
-      // 在全局注册，run.ts 收集后透传给 plugins-command，不污染其他命令的选项语义。
-      all: {
-        short: "a",
-        type: "boolean",
-      },
-      available: {
-        type: "boolean",
-      },
-      "keep-data": {
-        type: "boolean",
-      },
-      scope: {
-        short: "s",
-        type: "string",
-      },
-      sparse: {
-        multiple: true,
-        type: "string",
-      },
-    },
+    options: CLI_ARGUMENT_OPTIONS,
     strict: true,
   });
 
