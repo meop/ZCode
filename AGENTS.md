@@ -87,7 +87,7 @@ App 业务单测已退役，不新增或恢复 App 业务单测 test/spec 或 `c
 
 ## zcode-cli
 
-This branch is [meop/zcode-cli](https://github.com/meop/zcode-cli)'s patch stack on one upstream ZCode release: it
+This branch is [meop/ZCode](https://github.com/meop/ZCode)'s zcode-cli patch stack on one upstream ZCode release: it
 builds the CLI as a single executable and patches it to run without the desktop app. `CLI.md` describes its branches
 (`cli/v<upstream>`, one per upstream release, never rebased), how `VERSION` drives releases (tagged
 `zcode-cli-v<VERSION>`), how the next branch is made by cherry-picking this one's commits, `scripts/cli.nu`, and each

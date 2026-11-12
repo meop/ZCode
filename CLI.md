@@ -1,9 +1,9 @@
 # zcode-cli
 
-[meop/zcode-cli](https://github.com/meop/zcode-cli) is a fork of [zai-org/ZCode](https://github.com/zai-org/ZCode)
-that builds ZCode's CLI and TUI as a single executable: one `zcode` binary with Node and every runtime asset inside,
-for every os and arch, released for each upstream ZCode release with a few patches for running it on its own, without
-the desktop app.
+zcode-cli is ZCode's CLI and TUI, built by [meop/ZCode](https://github.com/meop/ZCode), a fork of
+[zai-org/ZCode](https://github.com/zai-org/ZCode), as a single executable: one `zcode` binary with Node and every
+runtime asset inside, for every os and arch, released for each upstream ZCode release with a few patches for running
+it on its own, without the desktop app.
 
 ## Branches and releases
 
@@ -19,7 +19,7 @@ the desktop app.
   before the next. The older branch is not touched. Release pre-releases (`<new>-alpha.1`, `-alpha.2`, …) while it
   settles, and `<new>` at the branch's tip once it works.
 - The default branch is the newest working `cli/v*`, since GitHub runs the scheduled `upstream` workflow from there.
-- ghpm installs the releases as `zcode` (`uri = "github.com/meop/zcode-cli"`).
+- ghpm installs the releases as `zcode` (`uri = "github.com/meop/ZCode"`).
 
 ## The commits on each branch
 
