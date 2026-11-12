@@ -28,6 +28,8 @@ export type GlobalDetectedLocale = Exclude<GlobalLocale, "auto">;
 export type GlobalOutputFormat = "text" | "json" | "stream-json";
 
 export type GlobalOptions = {
+  model?: string;
+  effort?: string;
   browserExecutable?: string;
   browserUse?: "headless";
   detectedLocale?: GlobalDetectedLocale;
