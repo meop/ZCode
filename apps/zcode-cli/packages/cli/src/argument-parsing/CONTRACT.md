@@ -8,3 +8,6 @@
 - 本模块不持有 session、provider 或工具注册状态，不改变 prompt、TUI、resume 的启动策略。
 
 策略精确覆盖 `arguments.ts`、本契约目录和契约测试目录；CLI 其他入口仍保持原有归属。
+
+`--model` / `-m` 与 `--effort` 是字符串选项；模型和档位的有效性由调用方使用当前
+Provider Registry 校验。协议模式不消费这两个会话启动覆盖项。

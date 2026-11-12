@@ -2,7 +2,8 @@ import type { TuiSubmitPromptResult } from "@zcode/tui";
 import { parseModelPickerValue, type ModelSelection } from "@zcode/shared/model-selection";
 import { listAppEffortOptions } from "../effort-options.js";
 import { rememberCurrentModelSelection } from "../model-selection.js";
-import type { CommandCenterDeps, CommandCenterModelOption } from "../types.js";
+import type { GlobalOptions } from "@zcode/shared-types";
+import type { CommandCenterApp, CommandCenterDeps, CommandCenterModelOption } from "../types.js";
 
 export async function handleModelCommand(
   args: string,
@@ -63,6 +64,7 @@ export function resolveTuiModelSelection(
   args: string,
   options: readonly CommandCenterModelOption[],
   selectedRef?: ModelSelection,
+  effortOverride?: string,
 ): ModelSelection {
   // Exact catalog matching preserves literal slashes and dollar signs in model IDs.
   const requested =
@@ -74,7 +76,13 @@ export function resolveTuiModelSelection(
   );
   if (!option) throw new Error(`Model is not available: ${args}`);
   if (option.disabledReason) throw new Error(option.disabledReason);
-  const reasoningLevel = requested.options?.reasoningLevel ?? option.reasoning?.defaultLevel;
+  const reasoningLevel =
+    effortOverride === undefined
+      ? (requested.options?.reasoningLevel ?? option.reasoning?.defaultLevel)
+      : requireLaunchEffort(
+          effortOverride,
+          option.reasoning?.levels.map(({ value }) => value) ?? [],
+        );
   if (
     !reasoningLevel ||
     !option.reasoning?.levels.some((level) => level.value === reasoningLevel)
@@ -109,4 +117,37 @@ function formatModelList(current: string | undefined, options: CommandCenterMode
     ...lines,
     "Use /model <provider/model> to select a model, then /effort <level> to change reasoning effort.",
   ].join("\n");
+}
+
+/** 启动覆盖只改当前会话；不要走 rememberCurrentModelSelection 写入个人默认值。 */
+export async function applyLaunchModelOverrides(
+  app: Pick<CommandCenterApp, "listModels" | "setModel" | "listThoughtLevels" | "setThoughtLevel">,
+  overrides: Pick<GlobalOptions, "model" | "effort">,
+): Promise<void> {
+  if (overrides.model !== undefined) {
+    if (!app.listModels || !app.setModel)
+      throw new Error("Model selection is not available in this client.");
+    const models = await app.listModels();
+    const selection = resolveTuiModelSelection(
+      overrides.model,
+      models,
+      undefined,
+      overrides.effort,
+    );
+    await app.setModel(selection);
+  } else if (overrides.effort !== undefined) {
+    if (!app.listThoughtLevels || !app.setThoughtLevel)
+      throw new Error("Reasoning effort selection is not available in this client.");
+    const effort = requireLaunchEffort(overrides.effort, await app.listThoughtLevels());
+    await app.setThoughtLevel(effort);
+  }
+}
+
+function requireLaunchEffort(requested: string, levels: readonly string[]): string {
+  const effort = levels.find((level) => level.toLowerCase() === requested.toLowerCase());
+  if (!effort)
+    throw new Error(
+      `Select a supported reasoning effort: ${levels.join(", ") || "none available"} (received: ${requested}).`,
+    );
+  return effort;
 }

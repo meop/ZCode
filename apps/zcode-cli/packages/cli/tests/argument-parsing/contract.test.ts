@@ -40,3 +40,16 @@ test("协议入口识别与普通 prompt 调用保持分离", () => {
   assert.equal(contract.isProtocolServerInvocation(["agent-server"]), true);
   assert.equal(contract.isProtocolServerInvocation(["--prompt", "app-server"]), false);
 });
+
+test("launch model and effort flags accept aliases and equals forms", () => {
+  assert.equal(
+    contract.parseGlobalArgs(["-m", "personal/vendor/model", "--effort=high"]).values.model,
+    "personal/vendor/model",
+  );
+  assert.equal(
+    contract.parseGlobalArgs(["--model=personal/model", "--effort", "low"]).values.effort,
+    "low",
+  );
+  assert.throws(() => contract.parseGlobalArgs(["--model"]));
+  assert.throws(() => contract.parseGlobalArgs(["--effort"]));
+});

@@ -29,6 +29,8 @@ Options:
   -h, --help       Show help
   -v, --version    Show version
   -p, --prompt <text>  Run a single prompt without opening the TUI
+  -m, --model <provider/model>  Model for this run; saved defaults are unchanged
+  --effort <level>  Reasoning effort for this run; saved defaults are unchanged
   --memory-bench   With --prompt, enable automatic Memory extraction and wait before exiting (requires Memory enabled)
   --browser-use <mode> Enable Browser Use backend (supported: headless)
   --surface <surface>  Presentation surface for headless prompts/app-server: terminal or desktop

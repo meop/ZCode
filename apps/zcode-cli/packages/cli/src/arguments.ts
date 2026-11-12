@@ -31,6 +31,8 @@ export const parseGlobalArgs = (argv: string[]) =>
         short: "p",
         type: "string",
       },
+      model: { short: "m", type: "string" },
+      effort: { type: "string" },
       "memory-bench": {
         type: "boolean",
       },

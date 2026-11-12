@@ -43,6 +43,7 @@ upstream base; port patches onto a new branch for a newer upstream release.
 2. **Z.ai auth**: sign-in keeps the platform JWT, and the build defines the ZCode release
 3. **official identity**: official MCP servers and the Sites plugin without the desktop app
 4. **TUI commands**: `/exit`, `/usage`, `/status`, `/stats`, `/reset`, and the app version in `zcode doctor`
+5. **Launch selection**: `--model` / `-m` and `--effort` override the initial session without changing saved defaults
 
 ## The script
 
@@ -106,6 +107,14 @@ runs upstream's checks.
   the server whether a new one is due as the desktop app does; `/reset 5h|week` says what it would spend, and adding
   `now` spends one (`bootstrap/src/app/coding-plan-usage.ts`). `zcode doctor` shows the ZCode release as
   `app version`, under the CLI's `version`.
+
+## Launch model and effort
+
+`zcode --model <provider/model> --effort <level>` (or `-m`) overrides the initial TUI
+or `-p` session without changing saved defaults. Either flag works alone; effort is
+validated against the selected model. Model-only uses its catalog-default effort.
+Overrides also apply after `--resume` / `--continue` restoration. Later TUI switches
+keep their existing behavior, including selecting the catalog-default effort.
 
 ## What this build leaves out
 
