@@ -1,10 +1,6 @@
 import { parseArgs } from "node:util";
 
-export const parseGlobalArgs = (argv: string[]) =>
-  parseArgs({
-    allowPositionals: true,
-    args: argv,
-    options: {
+export const CLI_ARGUMENT_OPTIONS = {
       help: {
         short: "h",
         type: "boolean",
@@ -115,7 +111,13 @@ export const parseGlobalArgs = (argv: string[]) =>
         multiple: true,
         type: "string",
       },
-    },
+    } as const;
+
+export const parseGlobalArgs = (argv: string[]) =>
+  parseArgs({
+    allowPositionals: true,
+    args: argv,
+    options: CLI_ARGUMENT_OPTIONS,
     strict: true,
   });
 
