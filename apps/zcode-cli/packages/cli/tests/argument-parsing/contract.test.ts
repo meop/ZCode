@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  CLI_ARGUMENT_OPTIONS,
   extractDisallowedToolsArgs,
   isProtocolServerInvocation,
   parseGlobalArgs,
@@ -8,6 +9,7 @@ import {
 import type { CliArgumentsContract } from "../../src/argument-parsing/contract.js";
 
 const contract: CliArgumentsContract = {
+  CLI_ARGUMENT_OPTIONS,
   extractDisallowedToolsArgs,
   isProtocolServerInvocation,
   parseGlobalArgs,

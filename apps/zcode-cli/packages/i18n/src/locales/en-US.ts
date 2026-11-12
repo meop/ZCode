@@ -15,13 +15,15 @@ Usage:
 With no command, zcode opens the full-screen TUI.
 
 Commands:
-  app-server Run the ZCode Protocol stdio app server
-  commands   List custom slash commands (\`commands list\`)
+  help       Show this help
+  app-server Run the ZCode Protocol stdio app server (alias: agent-server)
+  commands [list|inspect <name>]  List or inspect custom slash commands
   doctor     Inspect runtime and packaging assumptions
+  hooks trust <status|review|grant|revoke>  Inspect or manage workspace hook trust (forms below)
   login [zai|bigmodel]  Sign in through browser authorization
   logout     Remove the shared Z.AI login credentials
   plugins    Manage plugins and marketplaces (\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`; alias: plugin)
-  skills     List local skills (\`skills list\`)
+  skills [list|inspect <name>]  List or inspect local skills
   tui        Open the terminal UI
   version    Print the CLI version
 
@@ -50,27 +52,25 @@ Options:
   --target-replace Replace any existing session goal set by --target
   --workflow-mode <mode>  Dynamic workflows for prompts/TUI: disabled, onDemand, or alwaysOn (default: disabled)
   -c, --continue        Resume the latest session for the current directory
+  --output-format <text|json|stream-json>  Headless prompt output (stream-json emits JSONL events)
   --json           Print machine-readable JSON where supported
   --no-browser     Print the OAuth URL without opening a browser
   --no-color       Disable ANSI colors
   --verbose        Print extra diagnostic detail
 
-Slash Commands:
-  /help [command]       Show slash command help
-  /login                Choose Z.AI or BigModel browser login
-  /logout               Remove the shared Z.AI login credentials
-  /compact [instructions]  Compact the current conversation
-  /expert [status|resume|stop|<task>]  Run or manage the expert workflow
-  /dwf [list|cancel|resume]  List, cancel, or resume dynamic workflow runs
-  /fork [latest|checkpointId]  Fork a new session from a workspace checkpoint
-  /mcp [list|status|connect|disconnect]  Show or manage MCP servers
-  /mode [mode]          Show or switch permission mode: build, edit, plan, yolo, or guarded
-  /model [id]           Show or switch the current session model
-  /new                  Start a fresh session in the TUI
-  /resume [sessionId]   Resume a session by sessionId; omit it for latest in cwd
-  /rewind [latest|checkpointId]  Show latest checkpoint or restore workspace files
-  /skill [name] [task]  List skills, or force the next prompt to load one
-  /goal [action]        Show or set the current session goal
+Plugin options (see command forms below):
+  -f, --force      Skip confirmation for plugin uninstall
+  -a, --all        Disable all enabled plugins
+  --available     Include marketplace catalog in plugins list
+  --keep-data     Preserve plugin data on uninstall
+  -s, --scope <user|project>  Plugin install/enable scope (default: user)
+  --sparse <path>  Marketplace sparse path; repeat to include more paths
+
+Maintenance and protocol compatibility:
+  storage-migrate  Prepare SQLite storage and emit a JSON report; accepts no arguments
+  --prepare-storage  app-server: prepare storage and exit without starting the agent
+  --stdio         Accepted compatibility flag; use app-server for stdio protocol mode
+
 `,
   },
   tui: {

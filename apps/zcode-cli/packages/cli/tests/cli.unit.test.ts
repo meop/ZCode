@@ -1,3 +1,6 @@
+import { formatCliHelp } from "../src/help.js";
+import { CLI_ARGUMENT_OPTIONS } from "../src/arguments.js";
+import { BUILTIN_ZCODE_SLASH_COMMAND_HELP_ENTRIES } from "@zcode/shared";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -7073,4 +7076,63 @@ test("launch selection flags reject empty values and non-session commands", asyn
     );
     assert.match(ctx.stderr.output(), /must not be empty|supported only/);
   }
+});
+
+test("CLI help covers every parsed flag and built-in TUI command in both locales", () => {
+  for (const locale of ["en-US", "zh-CN"] as const) {
+    const help = formatCliHelp("test-version", locale);
+    const flags = new Set(help.match(/--[A-Za-z][A-Za-z-]*/gu));
+    for (const [name, definition] of Object.entries(CLI_ARGUMENT_OPTIONS)) {
+      assert.ok(flags.has(`--${name}`), `missing --${name} in ${locale} help`);
+      if ("short" in definition)
+        assert.match(help, new RegExp(`(^|[\\s|])-` + definition.short + `(?=[,\\s|])`, "mu"));
+    }
+    for (const flag of ["--disallowed-tools", "--disallowedTools"]) assert.ok(flags.has(flag));
+    for (const entry of BUILTIN_ZCODE_SLASH_COMMAND_HELP_ENTRIES) {
+      assert.ok(help.includes(entry.usage), `missing ${entry.usage} in ${locale} help`);
+      for (const alias of entry.aliases ?? []) assert.ok(help.includes(`/${alias}`));
+    }
+    for (const command of [
+      "help",
+      "app-server",
+      "agent-server",
+      "commands",
+      "doctor",
+      "hooks",
+      "login",
+      "logout",
+      "plugin",
+      "plugins",
+      "skills",
+      "storage-migrate",
+      "tui",
+      "version",
+    ]) {
+      assert.ok(help.includes(command), `missing CLI ${command} in ${locale}`);
+    }
+    for (const usage of [
+      "commands [list|inspect <name>]",
+      "skills [list|inspect <name>]",
+      "hooks trust grant",
+      "marketplace add <source>",
+    ])
+      assert.ok(help.includes(usage));
+    for (const flag of ["--workspace", "--hook-digest", "--bundle-digest", "--all-current"])
+      assert.ok(flags.has(flag));
+  }
+});
+
+test("CLI help is offline and complete without creating an app", async () => {
+  const ctx = createContext(["--help"]);
+  const result = await run(ctx, {
+    createZCodeApp: () => {
+      throw new Error("help must not initialize an app");
+    },
+    startProcessProviderRegistryRuntime: async () => {
+      throw new Error("help must not initialize providers");
+    },
+  });
+  assert.equal(result, 0);
+  assert.match(ctx.stdout.output(), /--output-format/);
+  assert.match(ctx.stdout.output(), /\/stats \[days\]/);
 });

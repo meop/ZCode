@@ -44,6 +44,7 @@ upstream base; port patches onto a new branch for a newer upstream release.
 3. **official identity**: official MCP servers and the Sites plugin without the desktop app
 4. **TUI commands**: `/exit`, `/usage`, `/status`, `/stats`, `/reset`, and the app version in `zcode doctor`
 5. **Launch selection**: `--model` / `-m` and `--effort` override the initial session without changing saved defaults
+6. **Help**: all public CLI commands/flags and built-in TUI slash commands, checked against their registries
 
 ## The script
 
@@ -115,6 +116,14 @@ or `-p` session without changing saved defaults. Either flag works alone; effort
 validated against the selected model. Model-only uses its catalog-default effort.
 Overrides also apply after `--resume` / `--continue` restoration. Later TUI switches
 keep their existing behavior, including selecting the catalog-default effort.
+
+## Help
+
+`zcode --help` lists CLI commands, positional forms, parsed flags/aliases and their scopes,
+plugin and hook-trust command forms, and all built-in TUI slash commands. The slash section
+uses the same registry as TUI `/help`; plugin and workspace commands are discovered in the
+TUI. Help stays offline and does not start an app or load credentials. Regression checks
+compare English and Chinese help with the actual flag definitions and slash registry.
 
 ## What this build leaves out
 

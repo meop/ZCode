@@ -10,7 +10,7 @@ import type {
 import type { RunContext } from "@zcode/shared-types";
 import type { RunDependencies } from "./cli-types.js";
 
-const USAGE = `Usage:
+export const HOOKS_TRUST_USAGE = `Usage:
   zcode hooks trust status [--workspace <path-or-identity>] [--json]
   zcode hooks trust review [--workspace <path-or-identity>] [--json]
   zcode hooks trust grant --workspace <path-or-identity> --hook-digest <sha256> [--hook-digest <sha256> ...]
@@ -42,7 +42,7 @@ export async function runHooksCommand(
     return fail(ctx, error instanceof Error ? error.message : String(error));
   }
   if (parsed.values.help) {
-    ctx.stdout.write(USAGE);
+    ctx.stdout.write(HOOKS_TRUST_USAGE);
     return 0;
   }
   const action = parsed.positionals[0] ?? "status";
@@ -173,6 +173,6 @@ function isAction(value: string): value is "status" | "review" | "grant" | "revo
 }
 
 function fail(ctx: RunContext, message: string): number {
-  ctx.stderr.write(`${message}\n${USAGE}`);
+  ctx.stderr.write(`${message}\n${HOOKS_TRUST_USAGE}`);
   return 1;
 }
