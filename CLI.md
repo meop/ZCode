@@ -5,6 +5,33 @@ zcode-cli is ZCode's CLI and TUI, built by [meop/ZCode](https://github.com/meop/
 runtime asset inside, for every os and arch, released for each upstream ZCode release with a few patches for running
 it on its own, without the desktop app.
 
+## Status of this branch
+
+`3.18.0-rc.1`: not working yet. Upstream synced the v3.18.0 source (`b95ebaff`) without tagging it; the branch is
+built on that commit. The patches port cleanly and every test listed below passes, but the binary doesn't run a
+prompt, and upstream's own 3.18 build, with none of these patches, fails the same way. Left to do:
+
+1. **No model is selected.** With an existing `~/.zcode` that 3.17.2 runs fine with (`provider_config.json` sets
+   `defaultModelSelection` to `account:zai-individual-coding-plan`), 3.18 resolves no model: `zcode -p` stops with
+   "Select a model before sending a message" (`bootstrap/src/app/cli-default-selection.ts`), and the TUI starts with
+   no model. `create-app.ts` builds `CliDefaultSelection` from `runtimeConfig.modelSelection`, so the next step is why
+   that is empty: whether the standalone account provider (`readStandaloneAccountProviderConfigSnapshot`,
+   `hasStandaloneCodingPlanAccess`) is entitled under 3.18's credential store, and what 3.18 reads the default from.
+2. **A crash at exit.** When a run ends early, MCP servers are closed mid-handshake, and an unhandled
+   `SdkError: Version negotiation failed ... during the server/discover probe` (`ERA_NEGOTIATION_FAILED`) kills the
+   process. It may go away with 1, but an unhandled rejection on close is a bug either way.
+3. **The credential store.** 3.18 keeps credentials under a key in the OS keyring (`@napi-rs/keyring`: Secret
+   Service, Keychain, Credential Manager), with a 0600 `~/.zcode/v2/credential-secret` file or
+   `ZCODE_CREDENTIAL_SECRET(_FILE)` for headless machines, and migrates old `enc:v1` values to `enc:v2:os:` on first
+   use. 3.17.2 can't read `enc:v2` values, so running a 3.18 build on a host breaks that host's 3.17.2 zcode until it
+   signs in again (and the desktop app shares the file). The keyring module does load in the executable. Test with
+   `HOME` pointed at a copy of `~/.zcode`, never the real one: `ZCODE_DATA_BASE_DIR` alone doesn't redirect every
+   path.
+
+Tests that pass on this branch: adapters `auth`, `project-token-*`, `zai-business-token-refresh`,
+`mcp-official-auth*`; bootstrap `auth-login`, `standalone-*`, `coding-plan-usage`, `official-*`; cli `cli.unit`,
+`usage-command`, `build`; all of tui.
+
 ## Branches and releases
 
 - **`cli/v<upstream>`**: one branch per upstream release (`cli/v3.17.2`), holding this fork's commits on top of that
