@@ -1,3 +1,4 @@
+import { applyLaunchModelOverrides } from "./command-center/handlers/model.js";
 import { loadBootstrapModule } from "./bootstrap-loader.js";
 import type { ToolSearchMode } from "@zcode/contracts";
 import { getDefaultConfigPath, updateUiLocaleInFileConfig } from "@zcode/adapters/config";
@@ -68,7 +69,9 @@ export function createTuiSubmitPrompt(
   totalTokensReminder = false,
   agentAlwaysBackground = true,
   browserState?: GlobalOptions["browserState"],
+  launchModelOverrides: Pick<GlobalOptions, "model" | "effort"> = {},
 ): TuiPromptHandler {
+  let pendingLaunchOverrides = launchModelOverrides;
   let app: Awaited<ReturnType<NonNullable<RunDependencies["createZCodeApp"]>>> | undefined;
   let activeUiLocale = uiLocale;
   // 进程级句柄（telemetry / Provider Registry / endpoint 路由）跨 App 替换复用，见 runtime 文件。
@@ -207,6 +210,14 @@ export function createTuiSubmitPrompt(
     if (closeHandlerPromise) {
       await closeApp(createdApp);
       throw new Error("TUI prompt handler is closed");
+    }
+    try {
+      await applyLaunchModelOverrides(createdApp, pendingLaunchOverrides);
+      if (closeHandlerPromise) throw new Error("TUI prompt handler is closed");
+      pendingLaunchOverrides = {};
+    } catch (error) {
+      await closeApp(createdApp);
+      throw error;
     }
     modeState.current = readTuiMode(createdApp, currentCliMode(modeState));
     return createdApp;

@@ -118,6 +118,8 @@ const globalOptions = (
   return {
     browserExecutable,
     browserUse,
+    ...(values.model !== undefined ? { model: values.model.trim() } : {}),
+    ...(values.effort !== undefined ? { effort: values.effort.trim() } : {}),
     detectedLocale,
     force: values.force === true,
     json: values.json === true,
@@ -453,6 +455,10 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
   let outputFormat: GlobalOptions["outputFormat"];
   try {
     outputFormat = normalizeOutputFormat(parsed.values["output-format"] as string | undefined);
+    for (const key of ["model", "effort"] as const) {
+      if (parsed.values[key] !== undefined && !parsed.values[key].trim())
+        throw new Error(`--${key} must not be empty.`);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     ctx.stderr.write(`${message}\n`);
@@ -530,6 +536,20 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
   if (parsed.values.version === true) {
     ctx.stdout.write(`${version}\n`);
     return 0;
+  }
+
+  if (
+    (options.model !== undefined || options.effort !== undefined) &&
+    !isForceMcsSupportedInvocation({
+      positionals: parsed.positionals,
+      prompt: parsed.values.prompt as string | undefined,
+      targetRequest,
+    })
+  ) {
+    ctx.stderr.write(
+      "--model and --effort are supported only for TUI or headless prompt/target runs.\n",
+    );
+    return 1;
   }
 
   if (

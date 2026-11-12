@@ -33,6 +33,29 @@ contract.
 - Unknown models return a normal command response instead of being sent to the LLM.
 - A model switch affects later turns only. Existing message history keeps the model metadata it was created with.
 
+## Launch overrides
+
+`zcode --model <provider/model> --effort <level>` (also `-m`) applies to the initial
+TUI session or headless `-p` run. Either flag may be used alone. An explicit model
+selects its catalog-default effort unless `--effort` is also supplied. Effort alone
+uses the initial model, including a resumed session's selection. These overrides
+are applied after session restoration and before startup metadata or the first prompt.
+They update the existing app/session selection through its public setters, without
+writing the personal `defaultModelSelection` preference. Later TUI `/model` and
+`/effort` commands retain their current behavior and persistence rules; launch flags
+are not reapplied when `/new`, `/resume` or `/fork` creates another app.
+
+The command center's existing model resolver owns catalog/default validation for both
+launch and TUI paths. Explicit effort is validated against the destination model before
+changing either value. Unknown/disabled models, unsupported or empty effort/model
+values fail with a clear error; they never silently select another model or effort.
+These flags are supported only for TUI, `-p` and headless target invocations, not the
+protocol server or package/account utility commands. Help/version remain available.
+
+Regression coverage includes parser aliases/equals forms, TUI and headless wiring,
+model-only/effort-only/both, restored sessions, no preference writes, unsupported
+selections, and unchanged catalog-default behavior on later interactive model switches.
+
 ## State Boundary
 
 TUI 不拥有选型状态，只渲染 Bootstrap 的每会话 `cliDefaultSelection`。CLI 装配显式使用

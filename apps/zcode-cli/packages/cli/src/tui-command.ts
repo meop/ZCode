@@ -57,6 +57,7 @@ export const runTuiCommand = async (
       totalTokensReminder,
       agentAlwaysBackground,
       options.browserState,
+      options,
     );
     const unregisterShutdownHandlers = registerCliShutdownHandlers({
       cleanup: async () => {

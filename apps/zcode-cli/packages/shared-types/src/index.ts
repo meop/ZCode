@@ -33,6 +33,8 @@ export type GlobalBrowserStateSelection = {
 };
 
 export type GlobalOptions = {
+  model?: string;
+  effort?: string;
   browserExecutable?: string;
   browserState?: GlobalBrowserStateSelection;
   browserUse?: "headless";
