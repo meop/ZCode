@@ -11,7 +11,10 @@ import {
 } from "@zcode/provider-node";
 import { modelSelectionSchema, type ModelSelection, type ZCodeModelOption } from "@zcode/shared";
 import { createCommandCenter, type CommandCenterApp } from "../src/command-center.js";
-import { handleModelCommand } from "../src/command-center/handlers/model.js";
+import {
+  applyLaunchModelOverrides,
+  handleModelCommand,
+} from "../src/command-center/handlers/model.js";
 import { createTuiModelAvailabilityChecker } from "../src/tui-login-state.js";
 import { readTuiSessionMetadata } from "../src/tui-prompt-handler-queries.js";
 import { filterModelOptions, toPromptInput } from "../../tui/src/app-input.js";
@@ -552,4 +555,31 @@ test("terminal picker refreshes an empty catalog and switches model and effort w
     if (previousActEnvironment === undefined) delete reactEnvironment.IS_REACT_ACT_ENVIRONMENT;
     else reactEnvironment.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
   }
+});
+
+test("launch selection overrides are validated together without saving personal defaults", async () => {
+  const f = fixture({ ...model().ref, options: { reasoningLevel: "low" } });
+  await applyLaunchModelOverrides(f.app, { effort: "HIGH" });
+  assert.equal(f.app.getThoughtLevel?.(), "high");
+  await applyLaunchModelOverrides(f.app, {
+    model: `personal/${model().ref.modelId}`,
+    effort: "low",
+  });
+  assert.equal(f.app.getThoughtLevel?.(), "low");
+  await applyLaunchModelOverrides(f.app, { model: `personal/${model().ref.modelId}` });
+  assert.equal(f.app.getThoughtLevel?.(), "high");
+  const before = f.writes.length;
+  await assert.rejects(
+    applyLaunchModelOverrides(f.app, {
+      model: `personal/${model().ref.modelId}`,
+      effort: "impossible",
+    }),
+    /supported reasoning effort/,
+  );
+  await assert.rejects(
+    applyLaunchModelOverrides(f.app, { model: "missing/model" }),
+    /not available/,
+  );
+  assert.equal(f.writes.length, before);
+  assert.deepEqual(f.defaultWrites, []);
 });

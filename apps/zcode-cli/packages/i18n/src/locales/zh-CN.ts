@@ -29,6 +29,8 @@ export const zhCN: ZCodeCopy = {
   -h, --help       显示帮助
   -v, --version    显示版本
   -p, --prompt <text>  单次运行 prompt，不打开 TUI
+  -m, --model <provider/model>  本次启动的模型，不修改个人默认值
+  --effort <level>  本次启动的推理档位，不修改个人默认值
   --memory-bench   配合 --prompt 开启自动 Memory 提取并等待后退出（需已开启 Memory）
   --browser-use <mode> 启用 Browser Use backend（当前支持：headless）
   --surface <surface>  设置无头 prompt/app-server 的呈现面：terminal 或 desktop

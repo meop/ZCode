@@ -28,6 +28,7 @@ import { createTuiSubmitPrompt } from "../src/tui-prompt-handler.js";
 import {
   buildManualSkillPrompt,
   createCommandCenter,
+  type CommandCenterApp,
   parseSlashCommand,
 } from "../src/command-center.js";
 import type { CommandCenterTarget } from "../src/command-center.js";
@@ -6986,4 +6987,90 @@ test("account slash commands dispatch independently and reject invalid stats per
   assert.deepEqual(calls, ["usage", "status", "stats:7", "stats:14"]);
   assert.match((await submit("/help status", options)).response, /^\/status\n/);
   assert.match((await submit("/help stats", options)).response, /^\/stats \[days\]/);
+});
+
+for (const surface of ["prompt", "tui"] as const) {
+  test(`${surface} launch flags override the restored selection before use`, async () => {
+    for (const flags of [
+      ["--model", "openai/gpt-test", "--effort", "high"],
+      ["-m", "openai/gpt-test"],
+      ["--effort", "high"],
+    ]) {
+      const base = createPromptDeps();
+      const writes: unknown[] = [];
+      let effort = "low";
+      let observed = false;
+      let creations = 0;
+      const expected = flags.includes("--effort") ? "high" : "medium";
+      const ctx = createContext([
+        ...flags,
+        "--resume",
+        "restored-session",
+        ...(surface === "prompt" ? ["-p", "hello"] : []),
+      ]);
+      const result = await run(ctx, {
+        ...base,
+        createZCodeApp: (options) => {
+          assert.equal(options?.resume, creations === 0);
+          creations += 1;
+          effort = "low";
+          const app = base.createZCodeApp!(options) as unknown as CommandCenterApp;
+          return {
+            ...app,
+            getThoughtLevel: () => effort,
+            listModels: () => [createTestModelOption("openai", "gpt-test")],
+            listThoughtLevels: () => ["low", "medium", "high"],
+            setModel: async (selection: unknown) => {
+              writes.push(selection);
+              effort = (selection as { options: { reasoningLevel: string } }).options
+                .reasoningLevel;
+              return { model: "openai/gpt-test" };
+            },
+            setThoughtLevel: async (level: string) => {
+              writes.push(level);
+              effort = level;
+              return { thoughtLevel: level };
+            },
+            submitPrompt: async (input: never, submitOptions: never) => {
+              observed = true;
+              assert.equal(effort, expected);
+              return await app.submitPrompt(input, submitOptions);
+            },
+          } as never;
+        },
+        runTui: async (options) => {
+          const startup = await loadTuiStartup(options);
+          observed = true;
+          assert.equal(startup.initialThoughtLevel, expected);
+          await options.submitPrompt("/new", { abortSignal: new AbortController().signal });
+          assert.equal(effort, "low", "launch overrides are not reapplied to later TUI sessions");
+          return 0;
+        },
+      });
+      assert.equal(result, 0, ctx.stderr.output());
+      assert.equal(observed, true);
+      assert.equal(writes.length, 1);
+    }
+  });
+}
+
+test("launch selection flags reject empty values and non-session commands", async () => {
+  for (const argv of [
+    ["--model", ""],
+    ["--effort", "  "],
+    ["doctor", "--effort", "high"],
+    ["app-server", "--model", "p/m"],
+  ]) {
+    const ctx = createContext(argv);
+    assert.equal(
+      await run(ctx, {
+        ...createPromptDeps(),
+        createZCodeApp: () => {
+          throw new Error("must not create app");
+        },
+      }),
+      1,
+    );
+    assert.match(ctx.stderr.output(), /must not be empty|supported only/);
+  }
 });

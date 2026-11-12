@@ -1,3 +1,4 @@
+import { applyLaunchModelOverrides } from "./command-center/handlers/model.js";
 import type { ToolSearchMode } from "@zcode/contracts";
 import { createCliProviderRefreshReporter } from "./provider-runtime-env.js";
 import { extname } from "node:path";
@@ -282,6 +283,8 @@ export const runPrompt = async (
       await runCliCleanupWithTimeout(async () => lateApp.close?.(), cleanupTimeoutMs);
       throw abortController.signal.reason;
     }
+    await applyLaunchModelOverrides(app, options);
+    if (abortController.signal.aborted) throw abortController.signal.reason;
     traceId = app.traceId;
     if (options.memoryBench && !app.runtime.isProjectMemoryEnabled()) {
       throw new Error(MEMORY_BENCH_DISABLED_ERROR);
