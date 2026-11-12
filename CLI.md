@@ -13,10 +13,10 @@ it on its own, without the desktop app.
 - **`VERSION`** is the upstream release the branch is built on (`3.17.2`). A push to a `cli/**` branch whose
   `VERSION` has no release yet builds every target and releases that commit, tagged `zcode-cli-v<VERSION>` and titled
   `v<VERSION>`. The tag carries the project's name because the fork keeps upstream's own `v<semver>` tags. A
-  `VERSION` with a pre-release suffix (`3.18.0-alpha.1`) is published as a pre-release, which ghpm's latest skips.
+  `VERSION` with a pre-release suffix (`3.18.0-rc.1`) is published as a pre-release, which ghpm's latest skips.
 - **A new upstream release** (the `upstream` workflow opens an issue for one): make `cli/v<new>` from the new
   upstream commit, and cherry-pick the newest branch's commits onto it one at a time, fixing each up and testing it
-  before the next. The older branch is not touched. Release pre-releases (`<new>-alpha.1`, `-alpha.2`, …) while it
+  before the next. The older branch is not touched. Release pre-releases (`<new>-rc.1`, `-rc.2`, …) while it
   settles, and `<new>` at the branch's tip once it works.
 - The default branch is the newest working `cli/v*`, since GitHub runs the scheduled `upstream` workflow from there.
 - ghpm installs the releases as `zcode` (`uri = "github.com/meop/ZCode"`).

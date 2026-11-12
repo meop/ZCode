@@ -1,7 +1,7 @@
 # zcode-cli releases from VERSION, as meop's other projects do. Each cli/v<upstream> branch holds the patch stack on
 # that upstream ZCode release, and VERSION is that upstream version. A push whose VERSION has no tag yet builds every
 # target and releases that commit, tagged zcode-cli-v<VERSION> (the fork keeps upstream's own v<semver> tags) and
-# titled v<VERSION>; a VERSION with a pre-release part (3.18.0-alpha.1) is published as a pre-release.
+# titled v<VERSION>; a VERSION with a pre-release part (3.18.0-rc.1) is published as a pre-release.
 name: release
 
 on:
