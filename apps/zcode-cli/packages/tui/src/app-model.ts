@@ -237,6 +237,8 @@ export type SidebarState = {
   todos: TodoItem[];
   traceId?: string;
   usage?: ModelUsageSummary;
+  /** Billed totals for the whole session, including subagents; absent when the host cannot report them. */
+  sessionUsage?: import("./types.js").TuiSessionUsage;
   workspaceGitBranch?: string;
   workspaceDirectory?: string;
 };

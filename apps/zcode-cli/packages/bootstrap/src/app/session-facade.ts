@@ -19,6 +19,7 @@ import {
   type SupportedLocale,
   type TraceContext,
   type TurnInputIntentMetadata,
+  type UsageStorePort,
   type UiLocale,
   type UiThemePreference,
 } from "@zcode/contracts";
@@ -92,6 +93,7 @@ type SessionFacade = Pick<
   | "readSubagents"
   | "readSubagentTranscript"
   | "readTodos"
+  | "readSessionUsage"
   | "readTarget"
   | "setCustomSessionTitle"
   | "setMode"
@@ -354,6 +356,10 @@ export function createSessionFacade(deps: CreateSessionFacadeDeps): SessionFacad
       }),
     ...createSubagentObservation(deps),
     readTodos: async () => deps.sessionStore.readTodos({ sessionID: deps.sessionId }),
+    readSessionUsage: async () => {
+      const store = deps.sessionStore as Partial<UsageStorePort>;
+      return store.querySessionUsageTotals?.({ sessionID: deps.sessionId });
+    },
     readTarget: readTargetWithInterruptedRunRecovery,
     setCustomSessionTitle: async (input) =>
       deps.runtime.setCustomSessionTitle({

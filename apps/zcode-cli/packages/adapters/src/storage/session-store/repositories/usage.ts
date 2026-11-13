@@ -8,6 +8,7 @@ import type {
   AppUsageToolRow,
   TaskUsageQueryInput,
   TaskUsageQueryResult,
+  SessionUsageTotals,
   ModelUsageRecord,
   ToolUsageRecord,
   TurnUsageRecord,
@@ -562,6 +563,38 @@ export async function queryAppUsage(
       modelId: d.modelId ?? null,
       totalTokens: Number(d.totalTokens),
     })),
+  };
+}
+
+export async function querySessionUsageTotals(
+  db: DatabaseSync,
+  input: TaskUsageQueryInput,
+): Promise<SessionUsageTotals> {
+  const row = db
+    .prepare(
+      `select
+         count(*) as modelRequestCount,
+         coalesce(sum(input_tokens), 0) as inputTokens,
+         coalesce(sum(cache_read_input_tokens), 0) as cacheReadTokens,
+         coalesce(sum(output_tokens), 0) as outputTokens
+       from model_usage
+       where session_id = ?
+          or session_id in (select id from session where parent_id = ?)`,
+    )
+    .get(input.sessionID, input.sessionID) as
+    | {
+        cacheReadTokens: number;
+        inputTokens: number;
+        modelRequestCount: number;
+        outputTokens: number;
+      }
+    | undefined;
+  return {
+    sessionID: input.sessionID,
+    modelRequestCount: Number(row?.modelRequestCount ?? 0),
+    inputTokens: Number(row?.inputTokens ?? 0),
+    cacheReadTokens: Number(row?.cacheReadTokens ?? 0),
+    outputTokens: Number(row?.outputTokens ?? 0),
   };
 }
 

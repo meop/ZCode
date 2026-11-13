@@ -411,6 +411,8 @@ export interface ZCodeApp {
     childSessionId: string,
   ): Promise<import("./subagent-observation.js").SubagentTranscriptSnapshot>;
   readTodos(): Promise<TodoItem[]>;
+  /** Billed usage of this session and its direct children, from the usage table. */
+  readSessionUsage?(): Promise<import("@zcode/contracts").SessionUsageTotals | undefined>;
   readTarget(): Promise<SessionGoal | null>;
   setCustomSessionTitle(input: { title: string; traceContext?: TraceContext }): Promise<void>;
   readToolResultArtifact(uri: string): Promise<ToolArtifactReadResult>;

@@ -196,13 +196,76 @@ test("production sidebar shows product header and hides developer diagnostics", 
   assert.equal(textNodes.find((item) => item.text === " 1.2.3")?.style.fg, "#94a3b8");
   assert.equal(lines.includes("OpenTUI shell"), false);
   assert.equal(lines.includes("Run"), false);
-  assert.equal(lines.includes("Context"), false);
+  assert.equal(lines.includes("Context"), true);
+  assert.equal(lines.includes("Turn usage"), true);
   assert.equal(lines.includes("APIs"), false);
   assert.ok(lines.includes("Status"));
   assert.ok(lines.includes("▼ MCP"));
   assert.ok(lines.includes("▼ Modified Files"));
   assert.ok(lines.includes("▼ Todos"));
   assert.ok(lines.includes("/Users/dev/test/z-m:main"));
+});
+
+test("production sidebar separates current context from cumulative turn usage", () => {
+  const lines = collectTextLines(
+    Sidebar({
+      ...baseSidebarState,
+      contextUsage: { contextUsed: 68_127, contextWindow: 200_000 },
+      usage: {
+        source: "provider",
+        modelRequestCount: 17,
+        inputTokens: 1_042_992,
+        cacheReadTokens: 1_029_056,
+        cacheWriteTokens: 0,
+        outputTokens: 3_076,
+        reasoningTokens: 0,
+        totalTokens: 1_046_068,
+        webFetchRequests: 0,
+        webSearchRequests: 0,
+      },
+    }),
+  );
+  assert.ok(lines.includes("Used      68,127 (34%)"));
+  assert.ok(lines.includes("Calls     17"));
+  assert.ok(lines.includes("Input     1,042,992"));
+  assert.ok(lines.includes("Cached    1,029,056"));
+  assert.ok(lines.includes("Output    3,076"));
+  assert.ok(lines.includes("Cache     99% hit"));
+  assert.ok(lines.indexOf("Turn usage") < lines.indexOf("▼ MCP"));
+});
+
+test("production sidebar shows billed session totals below turn usage", () => {
+  const lines = collectTextLines(
+    Sidebar({
+      ...baseSidebarState,
+      sessionUsage: {
+        modelRequestCount: 291,
+        inputTokens: 39_767_852,
+        cacheReadTokens: 39_380_992,
+        outputTokens: 125_938,
+      },
+    }),
+  );
+  const start = lines.indexOf("Session usage");
+  assert.ok(start > lines.indexOf("Turn usage"));
+  assert.ok(start < lines.indexOf("▼ MCP"));
+  const section = lines.slice(start);
+  assert.ok(section.includes("Calls     291"));
+  assert.ok(section.includes("Input     39,767,852"));
+  assert.ok(section.includes("Cached    39,380,992"));
+  assert.ok(section.includes("Output    125,938"));
+});
+
+test("production sidebar omits session totals the host cannot report", () => {
+  const lines = collectTextLines(Sidebar({ ...baseSidebarState, sessionUsage: undefined }));
+  assert.equal(lines.includes("Session usage"), false);
+});
+
+test("production sidebar leaves absent usage unknown", () => {
+  const lines = collectTextLines(Sidebar({ ...baseSidebarState, usage: undefined }));
+  for (const label of ["Calls", "Input", "Cached", "Output", "Cache"]) {
+    assert.ok(lines.includes(`${label.padEnd(9)} -`));
+  }
 });
 
 test("clicking collapsible section headers toggles only that section", () => {

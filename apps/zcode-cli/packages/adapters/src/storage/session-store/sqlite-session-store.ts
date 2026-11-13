@@ -57,6 +57,7 @@ import type {
   SharedContextImportTransition,
   TaskUsageQueryInput,
   TaskUsageQueryResult,
+  SessionUsageTotals,
   TodoItem,
   ToolUsageRecord,
   TurnUsageRecord,
@@ -1005,6 +1006,10 @@ export class SqliteSessionStore
 
   async queryTaskUsage(input: TaskUsageQueryInput): Promise<TaskUsageQueryResult> {
     return usageRepository.queryTaskUsage(this.db, input);
+  }
+
+  async querySessionUsageTotals(input: TaskUsageQueryInput): Promise<SessionUsageTotals> {
+    return usageRepository.querySessionUsageTotals(this.db, input);
   }
 
   async recordInputHistory(input: {
