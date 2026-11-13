@@ -26,7 +26,11 @@ export async function recordInputHistory(
   if (text.length === 0) return null;
   const attachments = normalizedInputHistoryAttachments(input.attachments);
 
-  const latest = await recallPreviousInputHistory(db, { projectID: input.projectID });
+  // 同项目并行会话不能互相去重，否则另一会话的相同输入不会被持久化。
+  const latest = await recallPreviousInputHistory(db, {
+    projectID: input.projectID,
+    sessionID: input.sessionID,
+  });
   if (
     latest?.text === text &&
     stableInputHistoryAttachments(latest.attachments) === stableInputHistoryAttachments(attachments)
@@ -90,6 +94,7 @@ export async function recallPreviousInputHistory(
   db: DatabaseSync,
   input: {
     projectID: ProjectId;
+    sessionID?: SessionId;
     skip?: number;
   },
 ): Promise<InputHistoryEntry | null> {
@@ -99,11 +104,14 @@ export async function recallPreviousInputHistory(
       `
       select * from input_history
       where project_id = ?
+        and (? is null or session_id = ?)
       order by time_created desc, id desc
       limit 1 offset ?
       `,
     )
-    .get(input.projectID, skipCount) as InputHistoryRow | undefined;
+    .get(input.projectID, input.sessionID ?? null, input.sessionID ?? null, skipCount) as
+    | InputHistoryRow
+    | undefined;
   return row ? decodeInputHistoryRow(row) : null;
 }
 

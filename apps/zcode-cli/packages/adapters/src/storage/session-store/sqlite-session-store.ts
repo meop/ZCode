@@ -918,6 +918,7 @@ export class SqliteSessionStore
 
   async recallPreviousInputHistory(input: {
     projectID: ProjectId;
+    sessionID?: SessionId;
     skip?: number;
   }): Promise<InputHistoryEntry | null> {
     return inputHistoryRepository.recallPreviousInputHistory(this.db, input);

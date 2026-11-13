@@ -1967,6 +1967,13 @@ describe("session persistence", () => {
       expect(storedPromptHistory?.attachments?.[0]?.content).not.toContain("base64");
 
       await app.sendInput("queued through app", { delivery: "auto" });
+      await store.recordInputHistory({
+        projectID: testProjectIdFromDirectory(tempRoot),
+        sessionID: createSessionId("another-input-history-app"),
+        text: "/model from another session",
+        kind: "slash_command",
+        time: { created: Date.now() + 1 },
+      });
       expect(await app.recallPreviousInputHistory()).toMatchObject({
         kind: "steered_input",
         text: "queued through app",

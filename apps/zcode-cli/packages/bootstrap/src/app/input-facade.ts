@@ -93,6 +93,8 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
     if (!deps.inputHistoryStore) return null;
     const entry = await deps.inputHistoryStore.recallPreviousInputHistory({
       projectID: deps.runtime.getProjectId(),
+      // 根因：只按项目召回会混入其他进程的输入；恢复会话时也必须沿用同一 session 边界。
+      sessionID: deps.sessionId,
       skip,
     });
     return await materializeInputHistoryEntry(entry, deps.artifactStore);

@@ -33,6 +33,8 @@ export interface RecordInputHistoryInput {
 
 export interface RecallPreviousInputHistoryInput {
   projectID: ProjectId;
+  /** When supplied, recall only this session; never fall back to project history. */
+  sessionID?: SessionId;
   skip?: number;
 }
 
