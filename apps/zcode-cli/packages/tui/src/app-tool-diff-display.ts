@@ -10,10 +10,25 @@ const MAX_DIFF_LINES = 12;
 const MAX_DIFF_LINE_WIDTH = 100;
 
 export function formatFileDiffDisplay(display: Record<string, unknown>): ToolResultDisplay {
-  const structuredPatch = structuredPatchField(display);
+  const sourcePatch = structuredPatchField(display);
+  // 结构化渲染曾绕过 12 行预览限制并为全部 diff 行创建 native 节点。
+  let remaining = MAX_DIFF_LINES;
+  let widthTruncated = false;
+  const structuredPatch: ToolResultDisplayHunk[] = [];
+  for (const hunk of sourcePatch) {
+    if (remaining === 0) break;
+    const previewLines = hunk.lines.slice(0, remaining).map((line) => {
+      const preview = truncateDisplay(line, MAX_DIFF_LINE_WIDTH);
+      widthTruncated ||= preview !== line;
+      return preview;
+    });
+    remaining -= previewLines.length;
+    structuredPatch.push({ ...hunk, lines: previewLines });
+  }
   const lines = formatUnifiedDiffLines(structuredPatch);
-  const sourceLineCount = diffSourceLineCount(structuredPatch);
-  const truncated = booleanField(display, "truncated") || sourceLineCount > lines.length;
+  const sourceLineCount = diffSourceLineCount(sourcePatch);
+  const truncated =
+    booleanField(display, "truncated") || widthTruncated || sourceLineCount > lines.length;
 
   if (truncated) {
     appendTruncationLine(lines);
@@ -21,7 +36,7 @@ export function formatFileDiffDisplay(display: Record<string, unknown>): ToolRes
 
   const filePath = stringField(display, "filePath");
   return {
-    diff: formatUnifiedPatch(display),
+    diff: formatUnifiedPatch({ ...display, structuredPatch }),
     filePath,
     lines,
     structuredPatch,
