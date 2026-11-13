@@ -21,10 +21,10 @@ still leaving rich runtime diagnostics available for development builds.
 
 ## Layout Contract
 
-- Production sidebar shows the durable user-facing sections: status, MCP
-  servers, modified files, and todos.
+- Production sidebar shows status, Context, Turn usage, MCP servers, modified
+  files, and todos. Context and Turn usage precede the potentially long lists.
 - Developer sidebar additionally shows the OpenTUI shell subtitle, the Run
-  section, the Context section, and the API diagnostics section.
+  section and the API diagnostics section.
 - The first sidebar row displays the product name and current CLI version as
   `ZCode <version>`. The `ZCode` segment uses the sidebar accent blue; the
   version segment uses muted text.
@@ -33,6 +33,36 @@ still leaving rich runtime diagnostics available for development builds.
 - The footer never shows stale keyboard hints. It displays the workspace path.
   If a Git branch is available, it appends the branch after a colon, for example
   `/Users/dev/test/z-m:main`.
+
+## Token and Cache Visibility
+
+- Context shows the current window size and latest request's input size, never
+  the sum of inputs across requests. Internal tool-model requests contribute to
+  turn usage but do not replace the main conversation's current context size.
+- Turn usage shows cumulative model calls, input, cached input, output,
+  reasoning and input-cache hit rate for the active or latest completed turn.
+  Cached input is included in input, not added to it. These are provider token
+  counts, not credits or a claim about subscription quota deductions.
+- `TurnStarted` clears previous turn usage and cache status. `ModelComplete`
+  accumulates each completed request's usage; `TurnComplete` replaces it with
+  the runtime's authoritative turn summary (which may include nested calls).
+  The final submit result uses the same summary without adding it again.
+- Runtime owns usage; TUI only projects events already filtered by session and
+  deduplicated by event ID. Errors retain completed-request usage. Session
+  replacement clears the projection. Missing usage displays `-`.
+- On narrow terminals the existing `Ctrl+X`, then `B` shortcut opens the sidebar.
+
+```mermaid
+sequenceDiagram
+  participant Runtime
+  participant TUI
+  Runtime->>TUI: TurnStarted: clear usage
+  loop Each completed request
+    Runtime->>TUI: ModelComplete: accumulate usage, update current context
+  end
+  Runtime->>TUI: TurnComplete: replace with authoritative summary
+  Runtime->>TUI: Submit result: replace with same summary
+```
 
 ## MCP Server Section
 
@@ -63,3 +93,6 @@ still leaving rich runtime diagnostics available for development builds.
   footer.
 - TUI sidebar tests keep developer-mode coverage for provider/model, context, and
   API diagnostic rows.
+- Regression coverage checks production token/cache/call visibility, absent
+  usage, and two model completions followed by an authoritative turn summary,
+  turn errors, and reset on the next turn. Context must remain a request size.

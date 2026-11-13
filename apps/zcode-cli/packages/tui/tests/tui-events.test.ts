@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SessionEventType, type SessionEvent } from "@zcode/contracts";
+import { SessionEventType, type SessionEvent, type ModelUsageSummary } from "@zcode/contracts";
 import { applySessionEventToState } from "../src/app-events.js";
 import {
   appendAgentResult,
@@ -8,7 +8,7 @@ import {
   submitDuringActiveTurn,
   submitIdleTurn,
 } from "../src/app-submit.js";
-import type { Message, ModifiedFileStat, QueuedInput } from "../src/app-model.js";
+import type { ContextUsage, Message, ModifiedFileStat, QueuedInput } from "../src/app-model.js";
 import type { TuiOptions, TuiSubmitPromptResult } from "../src/types.js";
 
 test("does not render streamed tool input JSON as assistant text", () => {
@@ -521,6 +521,48 @@ test("aggregates current-session modified files from file diff displays", () => 
   ]);
 });
 
+test("accumulates request usage then replaces it with authoritative turn usage", () => {
+  const state = createSessionEventState();
+  state.apply(sessionEvent(SessionEventType.TurnStarted, {}));
+  state.apply(
+    sessionEvent(SessionEventType.ModelComplete, {
+      usage: { inputTokens: 100, cacheReadTokens: 80, outputTokens: 5 },
+    }),
+  );
+  state.apply(
+    sessionEvent(SessionEventType.ModelComplete, {
+      usage: { inputTokens: 120, cacheReadTokens: 100, outputTokens: 10 },
+    }),
+  );
+  assert.equal(state.usage?.inputTokens, 220);
+  assert.equal(state.usage?.cacheReadTokens, 180);
+  assert.equal(state.usage?.modelRequestCount, 2);
+  assert.equal(state.contextUsage.contextUsed, 120);
+  state.apply(
+    sessionEvent(SessionEventType.ModelComplete, {
+      stopReason: "tool_internal",
+      usage: { inputTokens: 10, cacheReadTokens: 2, outputTokens: 1 },
+    }),
+  );
+  assert.equal(state.usage?.inputTokens, 230);
+  assert.equal(state.usage?.cacheReadTokens, 182);
+  assert.equal(state.usage?.modelRequestCount, 3);
+  assert.equal(state.contextUsage.contextUsed, 120);
+  const authoritative = { ...state.usage!, inputTokens: 300, modelRequestCount: 4 };
+  state.apply(sessionEvent(SessionEventType.TurnComplete, { usage: authoritative }));
+  state.apply(sessionEvent(SessionEventType.TurnComplete, { usage: authoritative }));
+  assert.deepEqual(state.usage, authoritative);
+  assert.equal(state.contextUsage.contextUsed, 120);
+  state.apply(sessionEvent(SessionEventType.TurnStarted, {}));
+  assert.equal(state.usage, undefined);
+  state.apply(
+    sessionEvent(SessionEventType.ModelComplete, { usage: { inputTokens: 40, outputTokens: 2 } }),
+  );
+  state.apply(sessionEvent(SessionEventType.TurnError, { error: { message: "failed" } }));
+  assert.equal(state.usage?.inputTokens, 40);
+  assert.equal(state.usage?.modelRequestCount, 1);
+});
+
 function createSessionEventState(workspaceDirectory?: string): {
   apply: (event: SessionEvent) => void;
   lastError: string | undefined;
@@ -532,6 +574,8 @@ function createSessionEventState(workspaceDirectory?: string): {
   setMessages: (updater: Message[] | ((current: Message[]) => Message[])) => void;
   setQueuedInputs: (updater: QueuedInput[] | ((current: QueuedInput[]) => QueuedInput[])) => void;
   status: string;
+  usage: ModelUsageSummary | undefined;
+  contextUsage: ContextUsage;
 } {
   const state: {
     lastError: string | undefined;
@@ -541,6 +585,8 @@ function createSessionEventState(workspaceDirectory?: string): {
     modifiedFiles: ModifiedFileStat[];
     queuedInputs: QueuedInput[];
     status: string;
+    usage: ModelUsageSummary | undefined;
+    contextUsage: ContextUsage;
   } = {
     lastError: undefined,
     liveModelText: "",
@@ -549,6 +595,8 @@ function createSessionEventState(workspaceDirectory?: string): {
     modifiedFiles: [],
     queuedInputs: [],
     status: "",
+    usage: undefined,
+    contextUsage: {},
   };
   const assistantMessageIdsByToolCallId = new Map<string, string>();
   const modifiedFileToolCallIds = new Set<string>();
@@ -559,7 +607,10 @@ function createSessionEventState(workspaceDirectory?: string): {
         assistantMessageIdsByToolCallId,
         setActiveTurnId: () => {},
         setCacheStats: () => {},
-        setContextUsage: () => {},
+        setContextUsage: (updater) => {
+          state.contextUsage =
+            typeof updater === "function" ? updater(state.contextUsage) : updater;
+        },
         setLastError: (message) => {
           state.lastError = message;
         },
@@ -586,7 +637,9 @@ function createSessionEventState(workspaceDirectory?: string): {
           state.status = next;
         },
         setTodos: () => {},
-        setUsage: () => {},
+        setUsage: (updater) => {
+          state.usage = typeof updater === "function" ? updater(state.usage) : updater;
+        },
         toolNamesById,
         modifiedFileToolCallIds,
         workspaceDirectory,
@@ -594,6 +647,12 @@ function createSessionEventState(workspaceDirectory?: string): {
     },
     get lastError() {
       return state.lastError;
+    },
+    get usage() {
+      return state.usage;
+    },
+    get contextUsage() {
+      return state.contextUsage;
     },
     get liveModelText() {
       return state.liveModelText;

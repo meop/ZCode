@@ -66,6 +66,8 @@ export function applySessionEventToState(
       break;
     case SessionEventType.TurnStarted:
       handlers.setActiveTurnId(event.turnId);
+      handlers.setUsage(undefined);
+      handlers.setCacheStats(undefined);
       handlers.setStatus(copy.status.thinking);
       break;
     case SessionEventType.TurnComplete:
@@ -308,8 +310,25 @@ function applyModelCompleteEvent(
 ): void {
   const nextUsage = usageFromPayload(payload);
   if (nextUsage) {
-    setUsage(nextUsage);
-    if (nextUsage.inputTokens > 0) {
+    // ModelComplete 是单次请求，TurnComplete 才是整回合；不能把最后一次调用冒充回合用量。
+    setUsage((current) =>
+      current
+        ? {
+            source: "provider",
+            modelRequestCount: current.modelRequestCount + nextUsage.modelRequestCount,
+            inputTokens: current.inputTokens + nextUsage.inputTokens,
+            outputTokens: current.outputTokens + nextUsage.outputTokens,
+            totalTokens: current.totalTokens + nextUsage.totalTokens,
+            cacheReadTokens: current.cacheReadTokens + nextUsage.cacheReadTokens,
+            cacheWriteTokens: current.cacheWriteTokens + nextUsage.cacheWriteTokens,
+            reasoningTokens: current.reasoningTokens + nextUsage.reasoningTokens,
+            webFetchRequests: current.webFetchRequests + nextUsage.webFetchRequests,
+            webSearchRequests: current.webSearchRequests + nextUsage.webSearchRequests,
+          }
+        : nextUsage,
+    );
+    // 内部搜索请求的用量要累计，但其小上下文不能覆盖主会话的上下文大小。
+    if (nextUsage.inputTokens > 0 && stringField(payload, "stopReason") !== "tool_internal") {
       setContextUsage((current) => ({
         ...current,
         contextUsed: nextUsage.inputTokens,

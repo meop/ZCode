@@ -197,6 +197,10 @@ export const zhCN: ZCodeCopy = {
         total: "总计",
       },
       context: {
+        input: "输入",
+        output: "输出",
+        cached: "缓存输入",
+        calls: "模型调用",
         cache: "缓存",
         cacheReadWrite: "缓存读写",
         inputOutput: "输入/输出",
@@ -249,6 +253,7 @@ export const zhCN: ZCodeCopy = {
         workspace: "工作区",
       },
       sections: {
+        usage: "回合用量",
         apis: "API",
         context: "上下文",
         mcp: "MCP",

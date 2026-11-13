@@ -75,6 +75,9 @@ export function Sidebar(props: SidebarProps): React.ReactElement {
         ]
       : []),
     sidebarSection(copy.sidebar.sections.status, statusLines(props)),
+    // 用量属于用户可见状态，不应因生产模式而隐藏；长列表之前展示，避免被裁掉。
+    sidebarSection(copy.sidebar.sections.context, contextLines(props)),
+    sidebarSection(copy.sidebar.sections.usage, usageLines(props)),
     props.subagents
       ? h(SubagentsSection, {
           controller: props.subagents,
@@ -97,7 +100,6 @@ export function Sidebar(props: SidebarProps): React.ReactElement {
       files: props.modifiedFiles,
       onToggle: () => props.onToggleSection?.("modifiedFiles"),
     }),
-    ...(developerMode ? [sidebarSection(copy.sidebar.sections.context, contextLines(props))] : []),
     sidebarSection(copy.sidebar.sections.todos, todoLines(props), {
       expanded: props.sectionExpansion?.todos ?? true,
       onToggle: () => props.onToggleSection?.("todos"),
@@ -240,7 +242,6 @@ function runLines(props: SidebarProps): React.ReactNode[] {
 
 function contextLines(props: SidebarProps): React.ReactNode[] {
   const copy = props.copy ?? DEFAULT_TUI_COPY;
-  const usage = props.usage;
   return [
     rowLine(
       copy.sidebar.context.window,
@@ -248,29 +249,23 @@ function contextLines(props: SidebarProps): React.ReactNode[] {
       "window",
     ),
     rowLine(copy.sidebar.context.used, contextUsedLabel(props.contextUsage), "used"),
-    rowLine(
-      copy.sidebar.context.tokens,
-      usage ? `${formatNumber(usage.totalTokens)} ${copy.sidebar.cache.total}` : "-",
-      "tokens",
-    ),
-    rowLine(
-      copy.sidebar.context.inputOutput,
-      usage
-        ? `${formatNumber(usage.inputTokens)} in / ${formatNumber(usage.outputTokens)} out`
-        : "-",
-      "io",
-    ),
+  ];
+}
+
+function usageLines(props: SidebarProps): React.ReactNode[] {
+  const copy = props.copy ?? DEFAULT_TUI_COPY;
+  const usage = props.usage;
+  return [
+    rowLine(copy.sidebar.context.calls, formatOptionalNumber(usage?.modelRequestCount), "calls"),
+    rowLine(copy.sidebar.context.input, formatOptionalNumber(usage?.inputTokens), "input"),
+    rowLine(copy.sidebar.context.cached, formatOptionalNumber(usage?.cacheReadTokens), "cached"),
+    rowLine(copy.sidebar.context.output, formatOptionalNumber(usage?.outputTokens), "output"),
     rowLine(
       copy.sidebar.context.reason,
       usage ? formatNumber(usage.reasoningTokens) : "-",
       "reasoning",
     ),
     rowLine(copy.sidebar.context.cache, cacheHitLabel(usage, props.cacheStats, copy), "cache"),
-    rowLine(
-      copy.sidebar.context.cacheReadWrite,
-      cacheReadWriteLabel(usage, props.cacheStats, copy),
-      "cache-rw",
-    ),
   ];
 }
 
@@ -345,20 +340,6 @@ function cacheHitLabel(
     return cacheStats.lastCacheHit ? copy.sidebar.cache.lastHit : copy.sidebar.cache.lastMiss;
   }
   return "-";
-}
-
-function cacheReadWriteLabel(
-  usage: SidebarState["usage"],
-  cacheStats: CacheStats | undefined,
-  copy: TuiCopy,
-): string {
-  const read = usage?.cacheReadTokens ?? cacheStats?.cacheReadTokens;
-  const write = usage?.cacheWriteTokens;
-  if (read === undefined && write === undefined) return "-";
-  return copy.sidebar.cache.readWrite({
-    read: formatOptionalNumber(read),
-    write: formatOptionalNumber(write),
-  });
 }
 
 function workspaceFooterLabel(props: SidebarProps): string {

@@ -200,6 +200,10 @@ Maintenance and protocol compatibility:
         total: "total",
       },
       context: {
+        input: "Input",
+        output: "Output",
+        cached: "Cached",
+        calls: "Calls",
         cache: "Cache",
         cacheReadWrite: "Cache R/W",
         inputOutput: "I/O",
@@ -252,6 +256,7 @@ Maintenance and protocol compatibility:
         workspace: "Workspace",
       },
       sections: {
+        usage: "Turn usage",
         apis: "APIs",
         context: "Context",
         mcp: "MCP",
