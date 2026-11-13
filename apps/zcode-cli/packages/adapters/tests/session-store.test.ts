@@ -2878,6 +2878,86 @@ describe("SQLite session store", () => {
     }
   });
 
+  it("isolates interleaved session history and deduplication across reopen", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "zcode-session-input-history-"));
+    const dbPath = join(tempRoot, "session.sqlite");
+    const projectID = createProjectId("shared-history-project");
+    const sessionID = createSessionId("history-first");
+    const otherSessionID = createSessionId("history-second");
+    let store = await createSqliteSessionStore({ dbPath });
+    try {
+      await store.recordInputHistory({
+        projectID,
+        sessionID,
+        text: "/model",
+        kind: "slash_command",
+        time: { created: 1 },
+      });
+      expect(
+        await store.recordInputHistory({
+          projectID,
+          sessionID: otherSessionID,
+          text: "/model",
+          kind: "slash_command",
+          time: { created: 2 },
+        }),
+      ).not.toBeNull();
+      await store.recordInputHistory({
+        projectID,
+        sessionID,
+        text: "my prompt",
+        kind: "prompt",
+        time: { created: 3 },
+      });
+      await store.recordInputHistory({
+        projectID,
+        sessionID: otherSessionID,
+        text: "other prompt",
+        kind: "steered_input",
+        time: { created: 4 },
+      });
+      expect(
+        await store.recordInputHistory({ projectID, sessionID, text: "my prompt", kind: "prompt" }),
+      ).toBeNull();
+      await store.recordInputHistory({
+        projectID,
+        text: "legacy input",
+        kind: "prompt",
+        time: { created: 5 },
+      });
+      store.close();
+      store = await createSqliteSessionStore({ dbPath });
+      expect(await store.recallPreviousInputHistory({ projectID, sessionID })).toMatchObject({
+        text: "my prompt",
+      });
+      expect(
+        await store.recallPreviousInputHistory({ projectID, sessionID, skip: 1 }),
+      ).toMatchObject({ text: "/model" });
+      expect(await store.recallPreviousInputHistory({ projectID, sessionID, skip: 2 })).toBeNull();
+      expect(
+        await store.recallPreviousInputHistory({ projectID, sessionID: otherSessionID }),
+      ).toMatchObject({ text: "other prompt" });
+      expect(
+        await store.recallPreviousInputHistory({
+          projectID,
+          sessionID: createSessionId("empty-history"),
+        }),
+      ).toBeNull();
+      expect(
+        await store.recallPreviousInputHistory({
+          projectID: createProjectId("other-project"),
+          sessionID,
+        }),
+      ).toBeNull();
+      expect(await store.recallPreviousInputHistory({ projectID })).toMatchObject({
+        text: "legacy input",
+      });
+    } finally {
+      store.close();
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
   it("persists usage observability facts and prunes rows outside retention", async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), "zcode-usage-observability-"));
     const dbPath = join(tempRoot, "session.sqlite");
