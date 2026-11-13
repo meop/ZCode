@@ -1,6 +1,6 @@
 import { baseComponents } from "@mbears/opentui-react";
 import React from "react";
-import { createMarkdownSyntaxStyle } from "./app-markdown-theme.js";
+import { getMarkdownSyntaxStyle } from "./app-markdown-theme.js";
 import { activeTuiTheme } from "./theme/index.js";
 
 type MarkdownRenderMode = "markdown" | "code" | "plain";
@@ -35,11 +35,11 @@ export function MarkdownText({
 }: MarkdownTextProps): React.ReactElement {
   const theme = activeTuiTheme();
   const textColor = foregroundColor ?? theme.markdownText;
-  if (!content) {
-    return h("text", { style: { fg: textColor } }, "");
+  if (!content || mode === "plain") {
+    return h("text", { style: { fg: textColor } }, content);
   }
 
-  const syntaxStyle = createMarkdownSyntaxStyle(theme);
+  const syntaxStyle = getMarkdownSyntaxStyle();
   if (mode === "markdown") {
     if (syntaxStyle) {
       return h("markdown", {

@@ -3,8 +3,12 @@ import test from "node:test";
 import { MessageRow } from "../src/app-transcript-components.js";
 import { palette } from "../src/app-model.js";
 import { detectMarkdownRenderMode, MarkdownText } from "../src/app-markdown.js";
-import { markdownSyntaxRules } from "../src/app-markdown-theme.js";
-import { DARK_TUI_THEME } from "../src/theme/index.js";
+import {
+  disposeMarkdownSyntaxStyles,
+  getMarkdownSyntaxStyle,
+  markdownSyntaxRules,
+} from "../src/app-markdown-theme.js";
+import { DARK_TUI_THEME, setActiveTuiThemeMode } from "../src/theme/index.js";
 
 test("detects the best available markdown render mode", () => {
   assert.equal(
@@ -39,6 +43,33 @@ test("uses OpenTUI native markdown when available", () => {
   assert.equal(node.props.conceal, true);
   assert.equal(node.props.streaming, true);
   assert.ok(node.props.syntaxStyle);
+});
+
+test("repaints borrow at most one native style per theme and cleanup releases both", () => {
+  disposeMarkdownSyntaxStyles();
+  setActiveTuiThemeMode("dark");
+  const dark = getMarkdownSyntaxStyle("dark")!;
+  assert.ok(dark.getStyleCount() > 0);
+  for (let index = 0; index < 2_000; index++) {
+    const node = MarkdownText({
+      content: `streamed text ${index}`,
+      mode: index % 2 ? "code" : "markdown",
+    });
+    assert.equal(node.props.syntaxStyle, dark);
+  }
+  setActiveTuiThemeMode("light");
+  const light = MarkdownText({ content: "light text" }).props.syntaxStyle;
+  assert.notEqual(light, dark);
+  setActiveTuiThemeMode("dark");
+  assert.equal(MarkdownText({ content: "dark again" }).props.syntaxStyle, dark);
+  disposeMarkdownSyntaxStyles();
+  disposeMarkdownSyntaxStyles();
+  assert.throws(() => dark.getStyleCount(), /destroyed/);
+  assert.throws(() => light.getStyleCount(), /destroyed/);
+  const fresh = getMarkdownSyntaxStyle("dark")!;
+  assert.notEqual(fresh, dark);
+  assert.ok(fresh.getStyleCount() > 0);
+  disposeMarkdownSyntaxStyles();
 });
 
 test("passes underscore-delimited text through to native markdown unchanged", () => {
@@ -112,8 +143,14 @@ test("message rows hide speaker labels and only highlight user prompts", () => {
       (node) => node.text.includes("Show `raw` markdown") && node.style.fg === palette.text,
     ),
   );
-  assert.equal(collectTextLines(userRow).some((line) => line.includes("User:")), false);
-  assert.equal(collectTextLines(agentRow).some((line) => line.includes("Agent:")), false);
+  assert.equal(
+    collectTextLines(userRow).some((line) => line.includes("User:")),
+    false,
+  );
+  assert.equal(
+    collectTextLines(agentRow).some((line) => line.includes("Agent:")),
+    false,
+  );
 });
 
 test("message rows keep user and explicit plain text parts unformatted", () => {

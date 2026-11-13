@@ -1,5 +1,33 @@
 # TUI Markdown Rendering
 
+## Native Style Ownership
+
+- Markdown and code renderables borrow a shared native syntax style for the
+  current built-in theme. The TUI style cache owns at most two native styles,
+  one for dark and one for light. Repainting, streaming and MCP status refresh
+  must reuse them rather than allocate styles per component render.
+- Plain or empty text does not allocate a native syntax style. Theme changes
+  reuse the other theme's style without destroying styles still used by mounted
+  renderables. Creation failure leaves the plain-text fallback available.
+- After the renderer's destroy cycle and React unmount, the TUI owner destroys
+  all cached native styles and clears the cache. Cleanup is idempotent and a
+  subsequent TUI run creates fresh styles. JavaScript GC is not native cleanup.
+- Regression evidence: 20,000 uncached style creations grew RSS from 192 MiB
+  to 411 MiB after forced GC while JS heap stayed near 19 MiB. Explicitly
+  destroying each style kept RSS near 208 MiB. Tests must cover reuse across
+  content updates and theme switches, native destruction and recreation.
+
+```mermaid
+sequenceDiagram
+  participant Markdown as Markdown renderables
+  participant Cache as TUI theme style cache
+  participant Renderer
+  Markdown->>Cache: borrow style for dark/light
+  Cache-->>Markdown: same native style on repaint
+  Renderer->>Renderer: destroy renderables / unmount React
+  Renderer->>Cache: destroy owned styles and clear
+```
+
 ## Goal
 
 The TUI should render assistant markdown as structured terminal content instead

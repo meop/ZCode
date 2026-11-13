@@ -1,5 +1,14 @@
 import { SyntaxStyle, type ThemeTokenStyle } from "@mbears/opentui-core";
-import type { TuiThemeTokens } from "./theme/index.js";
+import {
+  activeTuiTheme,
+  getActiveTuiThemeMode,
+  type TuiThemeMode,
+  type TuiThemeTokens,
+} from "./theme/index.js";
+
+// SyntaxStyle 持有需显式销毁的 native 指针，GC 不会释放它。
+// 每次 Markdown repaint 都创建会让空闲 MCP 刷新也持续泄漏；TUI 只拥有两种内置主题的样式。
+const markdownSyntaxStyles = new Map<TuiThemeMode, SyntaxStyle>();
 
 export function markdownSyntaxRules(theme: TuiThemeTokens): ThemeTokenStyle[] {
   return [
@@ -52,17 +61,24 @@ export function markdownSyntaxRules(theme: TuiThemeTokens): ThemeTokenStyle[] {
   ];
 }
 
-export function createMarkdownSyntaxStyle(theme: TuiThemeTokens): SyntaxStyle | undefined {
+export function getMarkdownSyntaxStyle(mode = getActiveTuiThemeMode()): SyntaxStyle | undefined {
+  const cached = markdownSyntaxStyles.get(mode);
+  if (cached) return cached;
   try {
-    return SyntaxStyle.fromTheme(markdownSyntaxRules(theme));
+    const style = SyntaxStyle.fromTheme(markdownSyntaxRules(activeTuiTheme(mode)));
+    markdownSyntaxStyles.set(mode, style);
+    return style;
   } catch {
     return undefined;
   }
 }
 
-function token(
-  scope: string[],
-  style: ThemeTokenStyle["style"],
-): ThemeTokenStyle {
+/** Called by the TUI owner after native renderables have been destroyed. */
+export function disposeMarkdownSyntaxStyles(): void {
+  for (const style of markdownSyntaxStyles.values()) style.destroy();
+  markdownSyntaxStyles.clear();
+}
+
+function token(scope: string[], style: ThemeTokenStyle["style"]): ThemeTokenStyle {
   return { scope, style };
 }

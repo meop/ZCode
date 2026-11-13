@@ -4,6 +4,7 @@ import { createRoot } from "@mbears/opentui-react";
 import { getZCodeCopy } from "@zcode/i18n";
 import React from "react";
 import { TuiApp } from "./app.js";
+import { disposeMarkdownSyntaxStyles } from "./app-markdown-theme.js";
 import { TuiStartupScreen } from "./app-startup.js";
 import { createSelectionCopyHandler, hasCopyableSelectionText } from "./app-copy.js";
 import { activeTuiTheme, resolveTuiThemeMode, setActiveTuiThemeMode } from "./theme/index.js";
@@ -161,6 +162,8 @@ export async function runTuiWithRenderer(
   });
 
   const result = await closed;
+  // DESTROY 在 native root 递归销毁之前发出；await 后才可释放仍被 renderable 借用的样式。
+  disposeMarkdownSyntaxStyles();
   if (startupError) throw startupError;
   return result;
 }
