@@ -28,6 +28,25 @@ users can insert intentional line breaks with `Shift+Enter`.
   and a submitted prompt would be queued. While the user is editing non-history
   draft text, `Up` and `Down` are left to the multiline editor for cursor
   movement across wrapped or explicit lines.
+- Input recall is scoped to the active project and session, including slash
+  commands and steered input. New sessions start with empty recall; resuming a
+  session restores only that session's persisted inputs. Concurrent sessions
+  in the same project must not affect recall order or duplicate suppression.
+- Bootstrap supplies the active session ID through `InputHistoryStorePort`;
+  SQLite remains the history owner. The optional session filter preserves the
+  existing project-wide storage API for explicit callers, with no fallback to
+  project history when a session has no entries. Retention remains 100 entries.
+
+```mermaid
+sequenceDiagram
+  participant TUI
+  participant App as Active session app
+  participant Store as InputHistoryStorePort / SQLite
+  TUI->>App: Up / Down recall
+  App->>Store: projectID, sessionID, skip
+  Store-->>App: matching entry or null
+  App-->>TUI: materialized input and attachments
+```
 
 ## Rendering Contract
 
@@ -50,6 +69,9 @@ once the draft exceeds six visible rows.
 
 ## Tests
 
+- Storage regression covers interleaved sessions, duplicate suppression,
+  skip ordering, legacy entries without a session, and reopening the database.
+- Bootstrap regression verifies another session's latest input is not recalled.
 - TUI unit tests assert the prompt renders a textarea with word wrapping,
   bounded `2..6` visible rows, and key bindings for `Enter` submit plus
   `Shift+Enter` newline.
