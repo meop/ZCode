@@ -406,3 +406,64 @@ describe("queryTaskUsage", () => {
     }
   });
 });
+
+describe("querySessionUsageTotals", () => {
+  it("sums billed input for the session and its direct children only", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "zcode-session-usage-totals-"));
+    const store = await createSqliteSessionStore({ dbPath: join(tempRoot, "session.sqlite") });
+    const sessionID = createSessionId("totals");
+    const childID = createSessionId("totals-child");
+    const otherID = createSessionId("totals-other");
+    const turnID = createTurnId("totals-turn");
+    const now = 1_900_000_000_000;
+    const base = {
+      projectID: createProjectId("totals"),
+      directory: tempRoot,
+      version: "0.1.0",
+    };
+    const usage = (id: string, session: typeof sessionID, input: number, cached: number) => ({
+      id,
+      logicalRequestId: id,
+      sessionID: session,
+      turnID,
+      querySource: "main_turn",
+      providerId: "p",
+      modelId: "model-a",
+      status: "completed" as const,
+      startedAt: now,
+      inputTokens: input,
+      outputTokens: 10,
+      cacheReadInputTokens: cached,
+      computedTotalTokens: input + 10,
+    });
+    try {
+      await store.createSession({ ...base, id: sessionID, slug: "totals", title: "totals" });
+      await store.createSession({
+        ...base,
+        id: childID,
+        parentID: sessionID,
+        slug: "child",
+        title: "child",
+      });
+      await store.createSession({ ...base, id: otherID, slug: "other", title: "other" });
+      await store.recordModelUsage(usage("t1", sessionID, 25_000, 0));
+      await store.recordModelUsage(usage("t2", sessionID, 30_000, 24_000));
+      await store.recordModelUsage(usage("t3", childID, 5_000, 4_000));
+      await store.recordModelUsage(usage("t4", otherID, 99_000, 99_000));
+
+      expect(await store.querySessionUsageTotals({ sessionID })).toEqual({
+        sessionID,
+        modelRequestCount: 3,
+        inputTokens: 60_000,
+        cacheReadTokens: 28_000,
+        outputTokens: 30,
+      });
+      expect(
+        await store.querySessionUsageTotals({ sessionID: createSessionId("empty") }),
+      ).toMatchObject({ modelRequestCount: 0, inputTokens: 0 });
+    } finally {
+      store.close();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+});

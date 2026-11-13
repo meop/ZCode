@@ -1096,6 +1096,18 @@ export interface TaskUsageQueryResult {
   inputBaselineBySource: Record<string, number>;
 }
 
+/**
+ * Billed totals for a session and its direct child sessions: every model request's provider
+ * input as sent, not the incremental baseline `queryTaskUsage` reports.
+ */
+export interface SessionUsageTotals {
+  sessionID: SessionId;
+  modelRequestCount: number;
+  inputTokens: number;
+  cacheReadTokens: number;
+  outputTokens: number;
+}
+
 export interface UsageStorePort {
   recordModelUsage(input: ModelUsageRecord): Promise<void>;
   upsertTurnUsage(input: TurnUsageRecord): Promise<void>;
@@ -1103,6 +1115,7 @@ export interface UsageStorePort {
   pruneUsage(input?: { beforeTime?: number }): Promise<void>;
   queryAppUsage(input: AppUsageQueryInput): Promise<AppUsageQueryResult>;
   queryTaskUsage(input: TaskUsageQueryInput): Promise<TaskUsageQueryResult>;
+  querySessionUsageTotals?(input: TaskUsageQueryInput): Promise<SessionUsageTotals>;
 }
 
 export interface LocalSettingStorePort {

@@ -21,6 +21,7 @@ export type TuiPromptHandler = TuiSubmitPrompt & {
   listEffortOptions?: () => Promise<readonly TuiEffortOption[]>;
   listMcpServers?: TuiListMcpServers;
   readSubagents?: import("@zcode/tui").TuiReadSubagents;
+  readSessionUsage?: import("@zcode/tui").TuiReadSessionUsage;
   readSubagentTranscript?: import("@zcode/tui").TuiReadSubagentTranscript;
   listWorkflowRuns?: TuiListWorkflowRuns;
   replayWorkflowRuns?: TuiReplayWorkflowRuns;

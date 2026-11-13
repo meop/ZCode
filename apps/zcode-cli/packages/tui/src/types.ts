@@ -218,6 +218,13 @@ export type TuiRecallPreviousInput = (
 
 export type TuiCancelBackgroundTask = (taskId: string) => Promise<unknown>;
 
+export type TuiSessionUsage = Pick<
+  import("@zcode/contracts").SessionUsageTotals,
+  "modelRequestCount" | "inputTokens" | "cacheReadTokens" | "outputTokens"
+>;
+
+export type TuiReadSessionUsage = () => Promise<TuiSessionUsage | undefined>;
+
 export type TuiReadSubagents = (input?: {
   endedCursor?: string;
   endedLimit?: number;
@@ -322,6 +329,7 @@ export type TuiOptions = {
   cancelBackgroundTask?: TuiCancelBackgroundTask;
   readSubagents?: TuiReadSubagents;
   readSubagentTranscript?: TuiReadSubagentTranscript;
+  readSessionUsage?: TuiReadSessionUsage;
   listWorkspacePathSuggestions?: TuiListWorkspacePathSuggestions;
   listMcpServers?: TuiListMcpServers;
   listWorkflowRuns?: TuiListWorkflowRuns;

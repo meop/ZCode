@@ -15,6 +15,8 @@ export type {
   TuiRecallPreviousInput,
   TuiReadClipboardImage,
   TuiReadSubagents,
+  TuiReadSessionUsage,
+  TuiSessionUsage,
   TuiReadSubagentTranscript,
   TuiSubagentTranscriptSnapshot,
   TuiRequestPermission,
