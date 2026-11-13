@@ -85,7 +85,7 @@ test("hides the empty transcript logo when messages are present", () => {
   );
   const lines = collectTextLines(MessageRow({ copy: EN_COPY, index: 0, message }));
 
-  assert.equal(child?.type, MessageRow);
+  assert.equal((child?.type as { type?: unknown })?.type, MessageRow);
   assert.notEqual(child?.type, EmptyTranscriptLogo);
   assert.equal(lines.includes(ZCODE_LOGO_LINES[0]), false);
   assert.ok(lines.some((line) => line.includes("hello")));
@@ -572,6 +572,68 @@ test("infers Shiki languages from file diff paths", () => {
   assert.equal(inferShikiLanguage("TodoList/TodoItem.swift"), "swift");
   assert.equal(inferShikiLanguage("Dockerfile"), "dockerfile");
   assert.equal(inferShikiLanguage("file.unknown-ext"), undefined);
+});
+
+test("structured diff previews bound rows and retained text", () => {
+  const result = formatFileDiffDisplay({
+    filePath: "large.ts",
+    structuredPatch: [
+      {
+        oldStart: 1,
+        newStart: 1,
+        oldLines: 0,
+        newLines: 10_000,
+        lines: Array.from({ length: 10_000 }, () => "+" + "x".repeat(1000)),
+      },
+    ],
+  });
+  assert.equal(result.truncated, true);
+  assert.equal(
+    result.structuredPatch?.reduce((count, hunk) => count + hunk.lines.length, 0),
+    12,
+  );
+  assert.ok(
+    result.structuredPatch?.every((hunk) => hunk.lines.every((line) => line.length <= 100)),
+  );
+  assert.ok((result.diff?.length ?? 0) < 2_000);
+});
+
+test("highlight cache evicts old entries and refreshes recently read entries", async () => {
+  resetShikiHighlighterForTest();
+  const input = (index: number) => ({
+    filePath: "test.ts",
+    lines: [`const value = ${index};`],
+    mode: "dark" as const,
+  });
+  const first = await highlightShikiCodeLines(input(0));
+  const second = await highlightShikiCodeLines(input(1));
+  assert.ok(first);
+  for (let index = 2; index < 64; index++) await highlightShikiCodeLines(input(index));
+  assert.equal(await highlightShikiCodeLines(input(0)), first);
+  await highlightShikiCodeLines(input(64));
+  assert.equal(await highlightShikiCodeLines(input(0)), first);
+  assert.notEqual(await highlightShikiCodeLines(input(1)), second);
+  assert.equal(
+    await highlightShikiCodeLines({
+      filePath: "test.ts",
+      lines: ["x".repeat(65_537)],
+      mode: "dark",
+    }),
+    undefined,
+  );
+});
+
+test("highlight cache also evicts by retained characters below its entry limit", async () => {
+  resetShikiHighlighterForTest();
+  const input = (index: number) => ({
+    filePath: "test.ts",
+    lines: ["//" + "x".repeat(30_000) + index],
+    mode: "dark" as const,
+  });
+  const first = await highlightShikiCodeLines(input(0));
+  assert.ok(first);
+  for (let index = 1; index < 12; index++) await highlightShikiCodeLines(input(index));
+  assert.notEqual(await highlightShikiCodeLines(input(0)), first);
 });
 
 test("highlights Swift file diff content through Shiki", async () => {

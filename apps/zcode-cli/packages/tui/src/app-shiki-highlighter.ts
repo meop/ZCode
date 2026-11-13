@@ -1,11 +1,20 @@
 import path from "node:path";
-import { bundledLanguages, createHighlighter, type BundledLanguage, type BundledTheme } from "shiki";
+import {
+  bundledLanguages,
+  createHighlighter,
+  type BundledLanguage,
+  type BundledTheme,
+} from "shiki";
 import type { TuiThemeMode } from "./theme/index.js";
 
 const SHIKI_DARK_THEME = "github-dark";
 const SHIKI_LIGHT_THEME = "github-light";
 const SHIKI_THEMES = [SHIKI_DARK_THEME, SHIKI_LIGHT_THEME] as const;
 const HIGHLIGHT_TIMEOUT_MS = 2_500;
+const MAX_HIGHLIGHT_ENTRIES = 64;
+const MAX_HIGHLIGHT_CHARACTERS = 524_288;
+const MAX_HIGHLIGHT_SEGMENTS = 20_000;
+const MAX_HIGHLIGHT_SOURCE_CHARACTERS = 65_536;
 
 const LANGUAGE_BY_FILENAME: Record<string, BundledLanguage> = {
   dockerfile: "dockerfile",
@@ -36,7 +45,16 @@ type ShikiHighlighter = Awaited<ReturnType<typeof createHighlighter>>;
 
 let highlighterPromise: Promise<ShikiHighlighter> | undefined;
 const loadedLanguages = new Set<BundledLanguage>();
-const highlightCache = new Map<string, ShikiHighlightSegment[][] | undefined>();
+const highlightCache = new Map<
+  string,
+  {
+    value: ShikiHighlightSegment[][];
+    characters: number;
+    segments: number;
+  }
+>();
+let cachedCharacters = 0;
+let cachedSegments = 0;
 
 export function inferShikiLanguage(filePath: string | undefined): BundledLanguage | undefined {
   if (!filePath) return undefined;
@@ -57,10 +75,19 @@ export async function highlightShikiCodeLines(input: {
 }): Promise<ShikiHighlightSegment[][] | undefined> {
   const language = inferShikiLanguage(input.filePath);
   if (!language) return undefined;
+  if (
+    input.lines.reduce((size, line) => size + line.length + 1, 0) > MAX_HIGHLIGHT_SOURCE_CHARACTERS
+  )
+    return undefined;
 
   const theme = shikiThemeForMode(input.mode);
   const cacheKey = `${theme}\0${language}\0${input.lines.join("\n")}`;
-  if (highlightCache.has(cacheKey)) return highlightCache.get(cacheKey);
+  const cached = highlightCache.get(cacheKey);
+  if (cached) {
+    highlightCache.delete(cacheKey);
+    highlightCache.set(cacheKey, cached);
+    return cached.value;
+  }
 
   const highlighted = await withTimeout(
     tokenizeLines({
@@ -70,7 +97,36 @@ export async function highlightShikiCodeLines(input: {
     }),
     HIGHLIGHT_TIMEOUT_MS,
   );
-  highlightCache.set(cacheKey, highlighted);
+  // 源码和 token 数组都曾永久驻留；超时结果也不能缓存为永久的高亮失败。
+  if (highlighted) {
+    let characters = cacheKey.length;
+    let segments = 0;
+    for (const line of highlighted) {
+      segments += line.length;
+      for (const segment of line) characters += segment.text.length;
+    }
+    if (characters <= MAX_HIGHLIGHT_CHARACTERS && segments <= MAX_HIGHLIGHT_SEGMENTS) {
+      const previous = highlightCache.get(cacheKey);
+      if (previous) {
+        cachedCharacters -= previous.characters;
+        cachedSegments -= previous.segments;
+        highlightCache.delete(cacheKey);
+      }
+      highlightCache.set(cacheKey, { value: highlighted, characters, segments });
+      cachedCharacters += characters;
+      cachedSegments += segments;
+      while (
+        highlightCache.size > MAX_HIGHLIGHT_ENTRIES ||
+        cachedCharacters > MAX_HIGHLIGHT_CHARACTERS ||
+        cachedSegments > MAX_HIGHLIGHT_SEGMENTS
+      ) {
+        const oldest = highlightCache.entries().next().value!;
+        highlightCache.delete(oldest[0]);
+        cachedCharacters -= oldest[1].characters;
+        cachedSegments -= oldest[1].segments;
+      }
+    }
+  }
   return highlighted;
 }
 
@@ -78,6 +134,8 @@ export function resetShikiHighlighterForTest(): void {
   highlighterPromise = undefined;
   loadedLanguages.clear();
   highlightCache.clear();
+  cachedCharacters = 0;
+  cachedSegments = 0;
 }
 
 async function tokenizeLines(input: {
