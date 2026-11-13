@@ -1,5 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { formatTerminalTitle } from "../src/tui.js";
+
+test("terminal titles identify the project and session without control sequences", () => {
+  assert.equal(formatTerminalTitle(), "ZCode");
+  assert.equal(formatTerminalTitle("/vol/code/ghpm"), "ZCode: ghpm");
+  assert.equal(
+    formatTerminalTitle("/vol/code/ghpm", "Cache cleanup"),
+    "ZCode: ghpm — Cache cleanup",
+  );
+  const title = formatTerminalTitle("/vol/code/ghpm", "hello\u001b]2;bad\u0007\nworld");
+  assert.doesNotMatch(title, /[\u0000-\u001f\u007f-\u009f]/u);
+  assert.equal(formatTerminalTitle("/vol/code/ghpm", "x".repeat(500)).length, 160);
+});
 import { MessageRow } from "../src/app-transcript-components.js";
 import { palette } from "../src/app-model.js";
 import { detectMarkdownRenderMode, MarkdownText } from "../src/app-markdown.js";

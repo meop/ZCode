@@ -7,6 +7,13 @@ still leaving rich runtime diagnostics available for development builds.
 
 ## Source Of Truth
 
+- The TUI sets a sanitized terminal title, `ZCode: <project>`, on startup and
+  session replacement. Main-session title updates change it to
+  `ZCode: <project> — <session title>`. Child-session events do not change it.
+  Use the renderer's terminal-title API (OSC title, supported by tmux/Zellij)
+  without changing multiplexer settings. Strip control characters and bound
+  title length; headless commands never emit terminal-title sequences.
+
 - The CLI resolves `TuiOptions.developerMode` before launching the TUI.
 - `developerMode` is true when the inherited environment has
   `ZCODE_RUNTIME_ENV=development`.
