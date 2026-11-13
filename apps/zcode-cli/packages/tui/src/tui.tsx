@@ -3,6 +3,8 @@ import type { UiThemeMode } from "@zcode/contracts";
 import { createRoot } from "@mbears/opentui-react";
 import { getZCodeCopy } from "@zcode/i18n";
 import React from "react";
+import { basename } from "node:path";
+import { SessionEventType } from "@zcode/contracts";
 import { TuiApp } from "./app.js";
 import { disposeMarkdownSyntaxStyles } from "./app-markdown-theme.js";
 import { TuiStartupScreen } from "./app-startup.js";
@@ -10,6 +12,16 @@ import { createSelectionCopyHandler, hasCopyableSelectionText } from "./app-copy
 import { activeTuiTheme, resolveTuiThemeMode, setActiveTuiThemeMode } from "./theme/index.js";
 import { resolveInitialTerminalThemeMode } from "./theme/terminal.js";
 import type { TuiOptions } from "./types.js";
+
+const MAX_TERMINAL_TITLE_LENGTH = 160;
+
+export function formatTerminalTitle(directory?: string, sessionTitle?: string): string {
+  const project = directory ? basename(directory) || directory : "";
+  const label = [project, sessionTitle].filter(Boolean).join(" — ");
+  // 标题来自会话内容，必须去掉 OSC/BEL 等控制字符，不能把模型文本当终端指令。
+  const safe = label.replace(/\p{Cc}/gu, " ").trim();
+  return (safe ? `ZCode: ${safe}` : "ZCode").slice(0, MAX_TERMINAL_TITLE_LENGTH);
+}
 
 export const runTui = async (options: TuiOptions): Promise<number> => {
   if (!options.stdin.isTTY || !options.stdout.isTTY) {
@@ -103,6 +115,9 @@ export async function runTuiWithRenderer(
 
   const renderApp = (readyOptions: TuiOptions) => {
     if (destroyed) return;
+    let titleDirectory = readyOptions.workspaceDirectory;
+    renderer.setTerminalTitle(formatTerminalTitle(titleDirectory));
+    const subscribe = readyOptions.subscribeSessionEvents;
     const initialThemeMode = resolveTuiThemeMode(readyOptions.theme, terminalThemeMode);
     setActiveTuiThemeMode(initialThemeMode);
     renderer.setBackgroundColor(activeTuiTheme(initialThemeMode).background);
@@ -111,6 +126,28 @@ export async function runTuiWithRenderer(
       onExit,
       options: {
         ...readyOptions,
+        subscribeSessionEvents: subscribe
+          ? (sink) =>
+              subscribe((event) => {
+                const mainSessionId = readyOptions.getMainSessionId?.();
+                if (!mainSessionId || event.sessionId === mainSessionId) {
+                  const payload = event.payload as Record<string, unknown>;
+                  if (
+                    event.type === SessionEventType.SessionTitleUpdated &&
+                    typeof payload.title === "string"
+                  ) {
+                    renderer.setTerminalTitle(formatTerminalTitle(titleDirectory, payload.title));
+                  } else if (
+                    event.type === SessionEventType.SessionCreated ||
+                    event.type === SessionEventType.SessionResumed
+                  ) {
+                    if (typeof payload.directory === "string") titleDirectory = payload.directory;
+                    renderer.setTerminalTitle(formatTerminalTitle(titleDirectory));
+                  }
+                }
+                sink(event);
+              })
+          : undefined,
         initialThemeMode,
         setTerminalBackgroundColor: (color) => renderer.setBackgroundColor(color),
         subscribeThemeMode: (listener) => {
