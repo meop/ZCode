@@ -142,6 +142,10 @@ export interface TuiCopy {
       total: string;
     };
     context: {
+      input: string;
+      output: string;
+      cached: string;
+      calls: string;
       cache: string;
       cacheReadWrite: string;
       inputOutput: string;
@@ -194,6 +198,8 @@ export interface TuiCopy {
       workspace: string;
     };
     sections: {
+      usage: string;
+      sessionUsage: string;
       apis: string;
       context: string;
       mcp: string;

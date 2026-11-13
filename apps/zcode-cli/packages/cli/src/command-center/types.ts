@@ -199,6 +199,7 @@ export type CommandCenterApp = {
   loadSessionTranscript?(): Promise<NonNullable<TuiSubmitPromptResult["restoredMessages"]>>;
   readSubagents?: import("@zcode/tui").TuiReadSubagents;
   readSubagentTranscript?: import("@zcode/tui").TuiReadSubagentTranscript;
+  readSessionUsage?: import("@zcode/tui").TuiReadSessionUsage;
   readTarget?(): Promise<CommandCenterTarget | null>;
   setTarget?(input: {
     objective: string;

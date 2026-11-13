@@ -33,6 +33,10 @@ export const attachTuiAppQueries = (
       }
     );
   };
+  submitPrompt.readSessionUsage = async () => {
+    const app = await getApp();
+    return app.readSessionUsage?.();
+  };
   submitPrompt.readSubagentTranscript = async (childSessionId) => {
     const app = await getApp();
     if (!app.readSubagentTranscript) throw new Error("Subagent transcript is unavailable.");
