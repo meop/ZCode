@@ -9,6 +9,7 @@ import { ThoughtTranscriptPartView } from "./app-thought-components.js";
 import { ToolTranscriptPartView } from "./app-tool-components.js";
 import { WorkflowRunCardView } from "./app-workflow-card.js";
 import type { TuiWorkflowCard } from "./app-workflow-mirror.js";
+import { getActiveTuiThemeMode } from "./theme/index.js";
 
 const h = React.createElement as (
   type: React.ElementType | string,
@@ -79,18 +80,21 @@ export function ContentPane({
             : h(EmptyTranscriptLogo, { animated: animateEmptyLogo, key: "empty-transcript-logo" }),
         ]
       : messages.map((message, index) =>
-          h(MessageRow, {
+          h(MemoizedMessageRow, {
             copy,
             expandedWorkflowRunIds,
             index,
             key: `${index}-${message.role}`,
             message,
+            themeMode: getActiveTuiThemeMode(),
             terminalWidth,
             workflowCardsByToolCallId,
           }),
         )),
   );
 }
+
+const MemoizedMessageRow = React.memo(MessageRow);
 
 export function MessageRow({
   copy = DEFAULT_TUI_COPY,
@@ -104,6 +108,7 @@ export function MessageRow({
   index: number;
   message: Message;
   terminalWidth?: number;
+  themeMode?: "dark" | "light";
   workflowCardsByToolCallId?: ReadonlyMap<string, TuiWorkflowCard>;
 }): React.ReactElement {
   const parts = message.parts ?? [];
