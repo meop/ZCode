@@ -41,6 +41,7 @@ import type {
 import { resolveToolWorkingDirectory } from "../path-policy.js";
 import { decideBashCwdPolicy } from "./bash-cwd-policy.js";
 import { analysisContainsDirectoryChange } from "./bash-git-runtime-safety.js";
+import { joinBashStderrSuffixes, recoverMissingBashWorkingDirectory } from "./bash-missing-cwd.js";
 export {
   getBashActivityDescription,
   getBashAutoClassifierInput,
@@ -190,7 +191,12 @@ async function executeBashHandler(
     return emptyBashOutput(parsed);
   }
 
-  const request = createExecutionRequest(parsed, context, timeoutPolicy);
+  const missingCwd = await recoverMissingBashWorkingDirectory(context);
+  const request = createExecutionRequest(
+    parsed,
+    missingCwd ? { ...context, workingDirectory: missingCwd.workingDirectory } : context,
+    timeoutPolicy,
+  );
   if (request.command.mode === "shell") {
     request.command.command = await prepareAdbCommand(parsed.command, context, request.cwd!);
   }
@@ -284,7 +290,7 @@ async function executeBashHandler(
   }
   const output = await toBashOutput(result, parsed, context, {
     progressTiming,
-    stderrSuffix: cwdDecision.stderrSuffix,
+    stderrSuffix: joinBashStderrSuffixes(missingCwd?.stderrSuffix, cwdDecision.stderrSuffix),
     timeoutMs: request.timeoutMs,
   });
   await applyBashReadFileStateEffects({

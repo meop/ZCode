@@ -3018,3 +3018,7 @@ Activity 冷恢复补充：合成结算显式标识来源，不预占真实 jour
 Activity 实时物化补充：live、严格回放与批量回放统一按 delta 的实际输入判断是否重建子代理投影。文本、推理和非子代理工具行不触发完整 child outcome 对账；子代理行变化、删除、相关权限或后台执行状态变化仍触发；合法 child 启动/停止即使没有可见 delta，也需更新身份校验与停止控制。未变化的 child 状态及结束时间不重复写入事务索引。用真实 publisher 的 continuous/replayable 路径验证万级历史下普通流无全表迭代和 outcome 写入。
 
 审批物化成本约束（2026-11-19）：pendingInteractions 变化仅在 child 等待身份集合改变时触发 child 物化，与 Bash 受阻集合使用相同依赖口径。主代理审批申请／解除不访问完整 child outcome 索引；同一 child 多个审批只在第一次进入等待、最后一次解除时更新其摘要，两种 delivery profile 均回归。
+
+## Standalone Bash cwd recovery
+
+Before spawning, Bash checks its retained cwd through the filesystem port. A missing cwd resets to the workspace root and appends the recovery notice to stderr. The recovered directory also applies to ADB command preparation; timeout reporting, permissions, schemas and background lifecycle remain owned by the existing Bash handler. Regression: core/tests/bash-handler.test.ts.
