@@ -4,6 +4,10 @@ import { CliDefaultSelection } from "./cli-default-selection.js";
 import { isAbsolute, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import {
+  startStandaloneResourceSampler,
+  type ZCodeProcessResourceSampler,
+} from "../process-resource-sampler.js";
+import {
   createInMemorySessionEventStore,
   createNodeToolArtifactStore,
 } from "@zcode/adapters/storage";
@@ -223,6 +227,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
   let nodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let ownedNodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let providerModelRuntime: ApiProviderModelRuntime | undefined;
+  let standaloneResourceSampler: ZCodeProcessResourceSampler | undefined;
   try {
     const storageRoot = resolvePath(configResult.config.storage.dir);
     const cliStorageRoot = getCliStorageRoot(storageRoot);
@@ -876,6 +881,10 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       registry: options.providerRegistry,
       currentSelection: () => getRuntime().getSessionModelSelection(),
     });
+    const eventStore = options.eventStore ?? createInMemorySessionEventStore();
+    if (!options.eventStore) {
+      standaloneResourceSampler = startStandaloneResourceSampler(eventStore, logger);
+    }
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
       ...(options.readSubagentRuntimeConfig
         ? {
@@ -918,7 +927,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       // 主代理的 subagent 不是 observer：和 workflow run 一样排队、看冷却，同一父会话共用一条队列。
       subagentModelRequestAdmission: (parentSessionId) =>
         workflowConcurrencyGovernor.sessionSubagents(parentSessionId),
-      eventStore: options.eventStore ?? createInMemorySessionEventStore(),
+      eventStore,
       sessionStore,
       sessionMailboxPort,
       logger,
@@ -1352,6 +1361,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       },
       ...sessionFacade,
       close: async () => {
+        standaloneResourceSampler?.stop();
         try {
           await closeSession?.();
         } finally {
@@ -1538,6 +1548,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       ...inputFacade,
     };
   } catch (error) {
+    standaloneResourceSampler?.stop();
     providerModelRuntime?.dispose();
     void modelTelemetry.shutdown().catch(() => undefined);
     void ownedNodeReplBrowserBroker?.close();

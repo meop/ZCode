@@ -1,5 +1,24 @@
 # Session Event Store 保留策略（内存 event store 的 turn 窗口淘汰）
 
+Standalone ownership: when `createZCodeApp` creates its own event store, it
+starts the existing 60-second process sampler. Each tick prunes expired sealed
+turns across the store (including shared child sessions) and logs RSS, JS heap,
+external memory and store counts. Open turns remain protected by the existing
+retention policy. Close and startup failure stop the sampler. An injected store
+remains the host's responsibility, avoiding a second pruning timer in Desktop.
+This does not delete persisted transcripts or active session events. Detached
+protocol publishers remain owned and pruned by the protocol gateway.
+
+Standalone memory samples include PID, stable process instance token, uptime and
+CPU interval so multiple CLI instances sharing a log directory can be separated.
+RSS covers the whole process, including native allocations and worker threads;
+the JS heap fields cover the sampling thread. They do not measure child processes.
+The Linux-only `scripts/cli-memory-watch.py` observer reads a selected PID and its
+descendants without changing their lifecycle. It records PSS, private memory,
+swap, file descriptors and threads, using PID/start-time identities to reject PID
+reuse. It retains observed children after reparenting, stops when the root exits,
+and rotates its JSONL output. It never reads command arguments or sends signals.
+
 状态：**已确认，按本 spec 实现**
 
 ## 问题

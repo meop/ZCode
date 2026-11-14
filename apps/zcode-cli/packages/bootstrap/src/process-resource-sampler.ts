@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { availableParallelism, totalmem } from "node:os";
+import type { Logger, SessionEventStorePort } from "@zcode/contracts";
 import {
   ZCODE_CLI_RESOURCE_SAMPLE_INTERVAL_MS,
   type ZCodeProcessResourceSample,
@@ -210,4 +211,33 @@ export function createZCodeProcessResourceSampler(
       }
     },
   };
+}
+
+/** The standalone app owns this sampler only when it owns the event store. */
+export function startStandaloneResourceSampler(
+  store: SessionEventStorePort,
+  logger: Logger,
+  options: Omit<CreateZCodeProcessResourceSamplerOptions, "onSample"> = {},
+): ZCodeProcessResourceSampler {
+  const sampler = createZCodeProcessResourceSampler({
+    ...options,
+    onSample: (sample, memory) => {
+      // CLI 没有 Desktop 的 host tick；单回合子会话等不到下一 TurnStarted，会永久保留 delta。
+      store.pruneTransientEvents?.();
+      logger.info("Process memory sample", {
+        event: "standalone.process.memory_sample",
+        // 同一日志目录可能由多个实例共用；RSS 包含 native/worker，heap 只属于采样线程。
+        pid: process.pid,
+        // 日志脱敏器会隐藏含 token 的键；这是进程关联 ID，不是凭据。
+        processInstanceId: sample.instanceToken,
+        uptimeMinutes: sample.uptimeMinutes,
+        intervalMs: sample.intervalMs,
+        cpuCores: sample.cpuCores,
+        ...memory,
+        counters: store.getStats?.(),
+      });
+    },
+  });
+  sampler.start();
+  return sampler;
 }
