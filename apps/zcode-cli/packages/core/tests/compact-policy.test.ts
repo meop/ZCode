@@ -232,6 +232,37 @@ describe("auto compact policy", () => {
       ).toMatchObject({ outputReserveTokens: reserve, shouldCompact: true, threshold });
     },
   );
+  it("caps the threshold at autoTokenLimit for large-window models", () => {
+    const config = {
+      contextWindow: 1_000_000,
+      maxOutputTokens: 128_000,
+      autoTokenLimit: 200_000,
+    };
+
+    expect(getAutoCompactThreshold({ ...config, autoTokenLimit: undefined })).toBe(907_000);
+    expect(getAutoCompactThreshold(config)).toBe(200_000);
+    expect(
+      shouldAutoCompact({
+        config,
+        messages: ENOUGH_MESSAGES,
+        tokenOverride: { source: "provider_usage", tokenCount: 199_999 },
+      }),
+    ).toMatchObject({ reason: "below_threshold", threshold: 200_000 });
+    expect(
+      shouldAutoCompact({
+        config,
+        messages: ENOUGH_MESSAGES,
+        tokenOverride: { source: "provider_usage", tokenCount: 200_000 },
+      }),
+    ).toMatchObject({ reason: "above_threshold", shouldCompact: true });
+  });
+
+  it("never raises the threshold above the window-derived one", () => {
+    expect(getAutoCompactThreshold({ contextWindow: 128_000, autoTokenLimit: 500_000 })).toBe(
+      94_000,
+    );
+    expect(getAutoCompactThreshold({ contextWindow: 128_000, autoTokenLimit: 0 })).toBe(94_000);
+  });
 
   it("surfaces provider context usage as the token count truth source", () => {
     const decision = shouldAutoCompact({

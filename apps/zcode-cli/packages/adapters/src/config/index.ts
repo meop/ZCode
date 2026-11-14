@@ -179,6 +179,10 @@ class ConfigStore {
       if (config.logging.format !== undefined)
         this.set(ConfigKey.LogFormat, config.logging.format, scope);
     }
+    if (config.compact) {
+      if (config.compact.autoTokenLimit !== undefined)
+        this.set(ConfigKey.CompactAutoTokenLimit, config.compact.autoTokenLimit, scope);
+    }
     if (config.toolConcurrency) {
       if (config.toolConcurrency.maxConcurrency !== undefined)
         this.set(ConfigKey.ToolConcurrencyMax, config.toolConcurrency.maxConcurrency, scope);
@@ -287,6 +291,9 @@ export class ConfigPortImpl implements ConfigPort {
         memory: this.store.get(ConfigKey.FeatureMemory) ?? true,
         skill: this.store.get(ConfigKey.FeatureSkill) ?? true,
         mcp: this.store.get(ConfigKey.FeatureMcp) ?? true,
+      },
+      compact: {
+        autoTokenLimit: this.store.get(ConfigKey.CompactAutoTokenLimit),
       },
       memory: {
         use: this.store.get(ConfigKey.MemoryUse) ?? DefaultConfig.memory.use,
@@ -405,6 +412,8 @@ function getDefaultValue(key: ConfigKey): unknown {
       return defaults.features.skill;
     case ConfigKey.FeatureMcp:
       return defaults.features.mcp;
+    case ConfigKey.CompactAutoTokenLimit:
+      return defaults.compact.autoTokenLimit;
     case ConfigKey.MemoryUse:
       return defaults.memory.use;
     case ConfigKey.McpServers:
