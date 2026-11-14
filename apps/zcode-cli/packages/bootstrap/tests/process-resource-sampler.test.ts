@@ -1,8 +1,10 @@
 import { zcodeProcessResourceSampleSchema } from "@zcode/shared";
+import { DefaultLogRedactor } from "@zcode/adapters";
 import { describe, expect, it, vi } from "vitest";
 import {
   ZCODE_PROCESS_RESOURCE_SAMPLE_INTERVAL_MS,
   createZCodeProcessResourceSampler,
+  startStandaloneResourceSampler,
   type ProcessMemoryUsageSnapshot,
 } from "../src/process-resource-sampler.js";
 
@@ -236,4 +238,47 @@ describe("createZCodeProcessResourceSampler", () => {
     sampler.stop();
     expect(clearInterval).toHaveBeenCalledWith(handle);
   });
+});
+
+it("standalone housekeeping prunes shared session events, logs memory and stops its timer", () => {
+  let tick = () => {};
+  let now = 0n;
+  const clearInterval = vi.fn();
+  const pruneTransientEvents = vi.fn();
+  const info = vi.fn();
+  const counters = { sessions: 2, events: 3, evictedEvents: 8, retainedTransient: 0 };
+  const sampler = startStandaloneResourceSampler(
+    { pruneTransientEvents, getStats: () => counters } as never,
+    { info } as never,
+    {
+      timer: {
+        setInterval(callback) {
+          tick = callback;
+          return {};
+        },
+        clearInterval,
+      },
+      readMonotonicTimeNs: () => (now += 60_000_000_000n),
+      readCpuUsage: () => ({ user: 0, system: 0 }),
+      readMemoryUsage: () => memoryUsage,
+    },
+  );
+  tick();
+  expect(pruneTransientEvents).toHaveBeenCalledOnce();
+  expect(info).toHaveBeenCalledWith(
+    "Process memory sample",
+    expect.objectContaining({
+      event: "standalone.process.memory_sample",
+      rss: memoryUsage.rss,
+      pid: process.pid,
+      processInstanceId: expect.any(String),
+      intervalMs: 60_000,
+      counters,
+    }),
+  );
+  sampler.stop();
+  sampler.stop();
+  expect(clearInterval).toHaveBeenCalledOnce();
+  const context = new DefaultLogRedactor().redact(info.mock.calls[0]?.[1]) as Record<string, unknown>;
+  expect(context.processInstanceId).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
 });
