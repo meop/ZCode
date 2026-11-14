@@ -37,6 +37,9 @@ export const ConfigKey = {
   FeatureSkill: "features.skill",
   FeatureMcp: "features.mcp",
 
+  // Compaction
+  CompactAutoTokenLimit: "compact.autoTokenLimit",
+
   // Memory
   MemoryUse: "memory.use",
 
@@ -148,7 +151,9 @@ export type ConfigValue<K extends ConfigKey> = K extends "modelStream.idleTimeou
                                                 ? UiLocale
                                                 : K extends "ui.theme"
                                                   ? UiThemePreference
-                                                  : unknown;
+                                                  : K extends "compact.autoTokenLimit"
+                                                    ? number | undefined
+                                                    : unknown;
 
 // ============================================================
 // Config Scope
@@ -226,6 +231,10 @@ export interface RuntimeConfig {
     skill: boolean;
     mcp: boolean;
   };
+  compact: {
+    /** Auto-compact once context reaches this many tokens, if lower than the model-derived threshold. */
+    autoTokenLimit?: number;
+  };
   memory: {
     use: boolean;
   };
@@ -263,6 +272,7 @@ export interface RuntimeConfigPatch {
   storage?: Partial<RuntimeConfig["storage"]>;
   network?: Partial<RuntimeConfig["network"]>;
   features?: Partial<RuntimeConfig["features"]>;
+  compact?: Partial<RuntimeConfig["compact"]>;
   memory?: Partial<RuntimeConfig["memory"]>;
   mcp?: Partial<RuntimeConfig["mcp"]>;
   plugins?: Partial<RuntimeConfig["plugins"]>;
@@ -313,6 +323,7 @@ export const DefaultRuntimeConfig: RuntimeConfig = {
     skill: true,
     mcp: true,
   },
+  compact: {},
   memory: {
     use: true,
   },

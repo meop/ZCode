@@ -50,6 +50,7 @@ describe("config adapters", () => {
         logging: { level: "error", format: "text" },
         ui: { locale: "zh-CN", theme: "light" },
         toolConcurrency: { maxConcurrency: 1 },
+        compact: { autoTokenLimit: 1_000 },
         modelAnomalyGuard: { toolCallWarningThreshold: 1 },
         skills: { enabled: false, roots: ["./extra-skills"], [skillPath]: { enable: false } },
         command: { [commandPath]: { enable: false } },
@@ -94,6 +95,7 @@ describe("config adapters", () => {
           "logging",
           "ui",
           "toolConcurrency",
+          "compact",
           "modelAnomalyGuard",
           "skills",
         ] as const) {
@@ -492,6 +494,32 @@ describe("config adapters", () => {
     expect(config.ui).toBeUndefined();
     expect(config.logging?.format).toBe("json");
     expect(config.logging?.level).toBeUndefined();
+  });
+
+  it("loads the auto-compact token limit from user config and environment", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zcode-config-compact-"));
+    const path = join(dir, "config.json");
+
+    try {
+      await writeFile(path, JSON.stringify({ compact: { autoTokenLimit: 200_000 } }));
+
+      expect(createConfig({ env: {}, skipUserConfig: true }).config.compact).toEqual({
+        autoTokenLimit: undefined,
+      });
+      expect(createConfig({ env: {}, userConfigPath: path }).config.compact).toEqual({
+        autoTokenLimit: 200_000,
+      });
+      expect(
+        createConfig({
+          env: { ZCODE_AUTOCOMPACT_TOKEN_LIMIT: "150000" },
+          userConfigPath: path,
+        }).config.compact.autoTokenLimit,
+      ).toBe(150_000);
+      expect(parseEnvConfig({ ZCODE_AUTOCOMPACT_TOKEN_LIMIT: "lots" }).compact).toBeUndefined();
+      expect(parseEnvConfig({ ZCODE_AUTOCOMPACT_TOKEN_LIMIT: "0" }).compact).toBeUndefined();
+    } finally {
+      await rm(dir, { force: true, recursive: true });
+    }
   });
 
   it("loads the supported memory config fields", async () => {

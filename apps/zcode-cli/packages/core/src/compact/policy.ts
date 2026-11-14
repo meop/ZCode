@@ -21,6 +21,12 @@ export interface AutoCompactPolicyConfig {
   summaryReserveTokens?: number;
   bufferTokens?: number;
   thresholdPercentOverride?: number;
+  /**
+   * User ceiling for the auto-compact threshold, in context tokens. The threshold becomes the
+   * lower of this and the window-derived one, so a model with a very large window can still be
+   * compacted at a working size. Unset keeps the window-derived threshold.
+   */
+  autoTokenLimit?: number;
   maxConsecutiveFailures?: number;
   microcompact?: LocalMicrocompactPolicyConfig;
 }
@@ -84,7 +90,9 @@ export function getAutoCompactOutputReserveTokens(config: AutoCompactPolicyConfi
 export function getAutoCompactThreshold(config: AutoCompactPolicyConfig = {}): number {
   const effectiveContextWindow = getEffectiveContextWindowSize(config);
   const buffer = positiveInt(config.bufferTokens) ?? AUTOCOMPACT_BUFFER_TOKENS;
-  return Math.max(0, effectiveContextWindow - buffer);
+  const windowThreshold = Math.max(0, effectiveContextWindow - buffer);
+  const limit = positiveInt(config.autoTokenLimit);
+  return limit ? Math.min(windowThreshold, limit) : windowThreshold;
 }
 
 export function shouldAutoCompact(input: {

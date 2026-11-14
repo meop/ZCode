@@ -43,6 +43,10 @@ const memorySchema = z.object({
   use: z.boolean().optional(),
 });
 
+const compactSchema = z.object({
+  autoTokenLimit: positiveIntegerSchema.optional(),
+});
+
 const mcpServerBaseSchema = {
   alwaysLoad: z.boolean().optional(),
   // Host DTO 和连接池已有 isolation；文件解析不能丢弃整条已支持的声明。
@@ -296,6 +300,7 @@ export const ZCodeConfigFileSchema = z
     storage: storageSchema.optional(),
     network: networkSchema.optional(),
     features: featuresSchema.optional(),
+    compact: compactSchema.optional(),
     memory: memorySchema.optional(),
     mcp: mcpSchema.optional(),
     plugins: pluginsSchema.optional(),
@@ -435,6 +440,7 @@ function parsedConfigFileToRuntimePatch(parsed: ZCodeConfigFile): RuntimeConfigP
   if (parsed.storage) config.storage = parsed.storage;
   if (parsed.network) config.network = parsed.network;
   if (parsed.features) config.features = parsed.features;
+  if (parsed.compact) config.compact = parsed.compact;
   if (parsed.memory) config.memory = parsed.memory;
   if (parsed.mcp) config.mcp = parsed.mcp;
   if (parsed.plugins) config.plugins = normalizePluginConfig(parsed.plugins);

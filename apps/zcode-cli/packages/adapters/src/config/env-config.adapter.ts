@@ -52,6 +52,15 @@ export function parseEnvConfig(
       config.logging.format = normalizeLogFormat(value);
     }
 
+    // Auto-compact ceiling; ignored unless a positive integer
+    else if (configKey === "AUTOCOMPACT_TOKEN_LIMIT") {
+      const limit = Number(value);
+      if (Number.isInteger(limit) && limit > 0) {
+        if (!config.compact) config.compact = {};
+        config.compact.autoTokenLimit = limit;
+      }
+    }
+
     // Tool Concurrency config
     else if (configKey === "MAX_TOOL_CONCURRENCY") {
       if (!config.toolConcurrency) config.toolConcurrency = {};
