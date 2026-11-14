@@ -255,6 +255,41 @@ describe("resolveAppRuntimeConfig", () => {
     expect(resolved.runtimeConfig.subagents?.backgroundStallNotifyMs).toBe(30);
   });
 
+  it("projects compaction settings into the runtime", () => {
+    const base = {
+      cliStorageRoot: "/tmp/zcode-cli",
+      subagentOutputRootDir: "/tmp/zcode-cli/agents",
+      subagentProfiles: [],
+      workingDirectory,
+    };
+    const configured = createConfig({
+      cliOverrides: {
+        model: createConfigResult().config.model,
+        features: { compact: false },
+        compact: { autoTokenLimit: 200_000 },
+      },
+      env: {},
+      skipUserConfig: true,
+      workingDirectory,
+    });
+
+    expect(
+      resolveAppRuntimeConfig({ ...base, configResult: createConfigResult(), options: {} })
+        .runtimeConfig.compact,
+    ).toEqual({ enabled: true });
+    expect(
+      resolveAppRuntimeConfig({ ...base, configResult: configured, options: {} }).runtimeConfig
+        .compact,
+    ).toEqual({ enabled: false, autoTokenLimit: 200_000 });
+    expect(
+      resolveAppRuntimeConfig({
+        ...base,
+        configResult: configured,
+        options: { runtimeConfig: { compact: { autoTokenLimit: 90_000 } } },
+      }).runtimeConfig.compact,
+    ).toEqual({ enabled: false, autoTokenLimit: 90_000 });
+  });
+
   it("preserves an explicit disabled memory Extraction gate and logs it", () => {
     const resolved = resolveAppRuntimeConfig({
       cliStorageRoot: "/tmp/zcode-cli",

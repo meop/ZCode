@@ -157,6 +157,15 @@ export function resolveAppRuntimeConfig(input: {
     },
     skillMetadataBudget:
       options.runtimeConfig?.skillMetadataBudget ?? configResult.config.skills.metadataBudget,
+    // features.compact and compact.autoTokenLimit were parsed but never reached the runtime.
+    // An explicit runtimeConfig.compact (protocol callers) still wins field by field.
+    compact: {
+      enabled: configResult.config.features.compact,
+      ...(configResult.config.compact.autoTokenLimit === undefined
+        ? {}
+        : { autoTokenLimit: configResult.config.compact.autoTokenLimit }),
+      ...options.runtimeConfig?.compact,
+    },
     toolConcurrency: {
       maxConcurrency:
         options.runtimeConfig?.toolConcurrency?.maxConcurrency ??
