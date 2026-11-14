@@ -38,6 +38,7 @@ import type {
 } from "../types.js";
 import { resolveToolWorkingDirectory } from "../path-policy.js";
 import { decideBashCwdPolicy } from "./bash-cwd-policy.js";
+import { joinBashStderrSuffixes, recoverMissingBashWorkingDirectory } from "./bash-missing-cwd.js";
 export {
   getBashActivityDescription,
   getBashAutoClassifierInput,
@@ -183,7 +184,12 @@ async function executeBashHandler(
     return emptyBashOutput(parsed);
   }
 
-  const request = createExecutionRequest(parsed, context, timeoutPolicy);
+  const missingCwd = await recoverMissingBashWorkingDirectory(context);
+  const request = createExecutionRequest(
+    parsed,
+    missingCwd ? { ...context, workingDirectory: missingCwd.workingDirectory } : context,
+    timeoutPolicy,
+  );
   const progressTiming: BashProgressTiming = {};
   const commandTelemetry = startBashCommandTelemetry(parsed, context);
   const processLog: BashProcessLogState = {
@@ -271,7 +277,7 @@ async function executeBashHandler(
   }
   const output = await toBashOutput(result, parsed, context, {
     progressTiming,
-    stderrSuffix: cwdDecision.stderrSuffix,
+    stderrSuffix: joinBashStderrSuffixes(missingCwd?.stderrSuffix, cwdDecision.stderrSuffix),
   });
   await applyBashReadFileStateEffects({
     command: parsed.command,
