@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   BashOutputSchema,
   CoreErrorType,
+  FileSystemPortError,
   SessionEventType,
   createImageProcessorError,
 } from "@zcode/contracts";
@@ -574,6 +575,96 @@ describe("bashHandler", () => {
     });
     expect(observedCwd).toBe(nextCwd);
     expect(bashToolEntry.formatModelContent?.(output)).toBe("ok");
+  });
+
+  describe("missing retained cwd", () => {
+    const goneCwd = resolve(projectRoot, "removed-worktree");
+    const statPort = (stat: FileSystemPort["stat"]) => ({ stat }) as unknown as FileSystemPort;
+    const runIn = async (fileSystemPort: FileSystemPort) => {
+      let capturedRequest: ExecutionRequest | undefined;
+      const setCwd: string[] = [];
+      const output = (await bashHandler(
+        { command: "git status" } satisfies BashInput,
+        contextWith(
+          {
+            async run(request) {
+              capturedRequest = request;
+              return executionResult({
+                status: "completed",
+                exitCode: 0,
+                resolvedCwd: request.cwd,
+                stdout: "clean\n",
+              });
+            },
+          },
+          {
+            fileSystemPort,
+            workingDirectory: goneCwd,
+            workspaceRoot: projectRoot,
+            setWorkingDirectory: (cwd) => {
+              setCwd.push(cwd);
+            },
+          },
+        ),
+      )) as BashOutput;
+      return { capturedRequest, output, setCwd };
+    };
+
+    it("spawns in the workspace root and says so when the retained cwd was removed", async () => {
+      const { capturedRequest, output, setCwd } = await runIn(
+        statPort(async (request) => {
+          throw new FileSystemPortError({
+            code: "not_found",
+            message: "missing",
+            path: request.path,
+          });
+        }),
+      );
+
+      expect(capturedRequest?.cwd).toBe(projectRoot);
+      expect(setCwd[0]).toBe(projectRoot);
+      expect(output.stderr).toBe(`Shell cwd ${goneCwd} no longer exists; reset to ${projectRoot}`);
+      expect(bashToolEntry.formatModelContent?.(output)).toContain("clean");
+    });
+
+    it("treats a stat result of kind missing the same way", async () => {
+      const { capturedRequest } = await runIn(
+        statPort(
+          async (request) =>
+            ({ path: request.path, kind: "missing", sizeBytes: 0 }) satisfies FileSystemStatResult,
+        ),
+      );
+      expect(capturedRequest?.cwd).toBe(projectRoot);
+    });
+
+    it("keeps a retained cwd that still exists", async () => {
+      const { capturedRequest, output } = await runIn(
+        statPort(
+          async (request) =>
+            ({
+              path: request.path,
+              kind: "directory",
+              sizeBytes: 0,
+            }) satisfies FileSystemStatResult,
+        ),
+      );
+      expect(capturedRequest?.cwd).toBe(goneCwd);
+      expect(output.stderr).toBe("");
+    });
+
+    it("leaves the cwd alone when the stat fails for another reason", async () => {
+      const { capturedRequest, setCwd } = await runIn(
+        statPort(async (request) => {
+          throw new FileSystemPortError({
+            code: "permission_denied",
+            message: "denied",
+            path: request.path,
+          });
+        }),
+      );
+      expect(capturedRequest?.cwd).toBe(goneCwd);
+      expect(setCwd).not.toContain(projectRoot);
+    });
   });
 
   it("keeps cwd persistence independent from read-only Bash inspection classification", async () => {
