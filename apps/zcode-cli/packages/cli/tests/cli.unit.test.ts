@@ -4,7 +4,7 @@ import { BUILTIN_ZCODE_SLASH_COMMAND_HELP_ENTRIES } from "@zcode/shared";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { PassThrough } from "node:stream";
 import { join } from "node:path";
@@ -7194,4 +7194,47 @@ test("CLI help is offline and complete without creating an app", async () => {
   assert.equal(result, 0);
   assert.match(ctx.stdout.output(), /--output-format/);
   assert.match(ctx.stdout.output(), /\/stats \[days\]/);
+});
+
+test("standalone Linux entry persists and reopens credentials without a desktop keyring", { skip: process.platform !== "linux" }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "zcode-cli-headless-login-"));
+  const main = new URL("../src/main.ts", import.meta.url).href;
+  const credentials = new URL("../../adapters/src/auth/shared-credentials.ts", import.meta.url).href;
+  const runStore = async (write: boolean) => {
+    const code = `
+      process.argv = [process.execPath, "zcode", "--help"];
+      await import(${JSON.stringify(main)});
+      const { createSharedZCodeCredentialStore } = await import(${JSON.stringify(credentials)});
+      const store = createSharedZCodeCredentialStore();
+      ${write ? 'await store.save("oauth:zai:access_token", "cached-platform-jwt");' : ""}
+      if (await store.load("oauth:zai:access_token") !== "cached-platform-jwt") throw new Error("cached login missing");
+      process.stdout.write("HEADLESS_LOGIN_OK\\n");
+    `;
+    const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", code], {
+      env: {
+        PATH: process.env.PATH,
+        HOME: directory,
+        XDG_CONFIG_HOME: join(directory, "config"),
+        XDG_DATA_HOME: join(directory, "data"),
+        DBUS_SESSION_BUS_ADDRESS: `unix:path=${join(directory, "missing-bus")}`,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    child.stdout.on("data", (chunk) => { output += String(chunk); });
+    child.stderr.on("data", (chunk) => { output += String(chunk); });
+    const [exitCode] = await once(child, "close");
+    assert.equal(exitCode, 0, output);
+    assert.ok(output.includes("HEADLESS_LOGIN_OK"), output);
+  };
+  try {
+    await runStore(true);
+    const secret = join(directory, ".zcode/v2/credential-secret");
+    assert.equal((await stat(secret)).mode & 0o777, 0o600);
+    const stored = JSON.parse(await readFile(join(directory, ".zcode/v2/credentials.json"), "utf8"));
+    assert.match(stored["oauth:zai:access_token"], /^enc:v2:env:/);
+    await runStore(false);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

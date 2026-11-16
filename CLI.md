@@ -11,7 +11,8 @@ Based on upstream tag `v3.18.2` (`fec97590`), with `VERSION=3.18.2`. The working
 3.18.0 port changes are carried forward. The first 3.18.0 attempt's missing-model and shutdown-negotiation failures
 were not reproduced: a packaged Linux x64 CLI using an isolated copy of the existing configuration selected its default
 model, completed a real prompt and exited zero. A separate fresh-HOME PTY passed `/help`, `/new`, `/exit` and terminal
-title checks. Original credentials/configuration were verified unchanged; no global binary was replaced.
+title checks. Original credentials/configuration were verified unchanged; no global binary was replaced. The final packaged prompt
+check also passed using automatic private-file discovery with no secret environment override.
 
 Upstream's newer credential store keeps its async cipher, recovery-generation guard and transactional session writes.
 Our platform-JWT compare-and-save now uses that existing conditional-update transaction. Native resource sampling and
@@ -19,7 +20,7 @@ protocol privacy remain upstream-owned; the standalone hook adds local process c
 The executable version now reads the fork's VERSION; service-facing app version remains the upstream GUI version.
 
 Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 279 adapter, 132 bootstrap,
-239 CLI, 230 TUI and 135 core regressions passed (1,015 total). All 34 CLI typecheck tasks, root `pnpm typecheck`
+240 CLI, 230 TUI, 135 core and 50 credential-security regressions passed (1,066 total). All 34 CLI typecheck tasks, root `pnpm typecheck`
 (with a 4 GiB JS heap ceiling), root lint and architecture checks passed. Lint reports 538 warnings and zero errors.
 Other platform runtime checks and a long authenticated memory soak are not part of this local validation. CI builds
 all six release targets; the release assets and workflow result are the publication record.
@@ -158,6 +159,26 @@ runs upstream's checks.
   the server whether a new one is due as the desktop app does; `/reset 5h|week` says what it would spend, and adding
   `now` spends one (`bootstrap/src/app/coding-plan-usage.ts`). `zcode doctor` shows the ZCode release as
   `app version`, under the CLI's `version`.
+
+## Standalone credential storage
+
+Login still persists the long-lived Z.ai platform JWT and reuses it across launches, deriving short-lived project
+keys as needed. The server decides its expiry (often described as about 180 days); the fork does not promise or impose
+that duration. A valid cached JWT avoids the one-hour OAuth-token exchange on every launch.
+
+3.18 uses newer encryption at rest for `~/.zcode/v2/credentials.json`. On Linux, our standalone entrypoint enables a
+private `credential-secret` file fallback when a fresh directory has no usable Secret Service/keyring. Later launches
+discover that file automatically; no GUI, desktop session, or secret environment variable is required. Keep the secret
+with its encrypted credential file. Existing OS-bound stores retain their original key source; never silently switch
+or replace their key. macOS/Windows retain native key storage. Desktop/protocol-hosted invocations retain upstream
+host ownership. Older 3.17.2 binaries cannot read credentials migrated to the newer encryption format.
+
+The headless regression starts two fresh CLI processes with an isolated HOME and an unavailable D-Bus address,
+verifies a 0600 secret and encrypted credential file, then reopens the cached login without a keyring.
+
+For the first push of a new version branch, upstream's engineering hook assumes its internal `origin/staging` exists.
+Use the actual tagged base explicitly, for example `ZCODE_AFFECTED_TEST_BASE=v3.18.2 git push -u fork cli/v3.18.2`.
+This runs the affected-test gate against our real upstream base.
 
 ## Launch model and effort
 

@@ -1,3 +1,4 @@
+import { enablePrivateFileKeyFallback } from "@zcode/shared/credential-security";
 import { STORAGE_MIGRATION_COMMAND } from "@zcode/shared/sqlite-migrations";
 import { interceptTuiStderr, isTuiInvocation } from "./tui-stderr.js";
 import { interceptKnownRuntimeWarnings } from "./runtime-warnings.js";
@@ -22,6 +23,11 @@ async function main(): Promise<void> {
   // 入口先清洗用户 shell 注入的 NODE_ENV、代理和证书变量；网络变量只封存给后续 Bash/tool 子进程恢复。
   applyCliRuntimeEnvSanitization(process.env);
   const isProtocol = argv[0] === STORAGE_MIGRATION_COMMAND || isProtocolServerInvocation(argv);
+  // Linux 独立 CLI 也运行在无 Secret Service 的服务器；只为尚未绑定来源的凭据目录
+  // 开启私有文件回退，并且必须早于首次凭据读取。已绑定 OS 密钥及 Desktop 协议入口保持原规则。
+  if (process.platform === "linux" && !isProtocol && !isPluginHostInvocation(argv)) {
+    enablePrivateFileKeyFallback();
+  }
   const isTui = isTuiInvocation(argv);
   if (isProtocol) installProtocolStderrBoundary(process.stderr);
   const lifecycle =
