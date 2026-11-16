@@ -97,8 +97,15 @@ the Host delegates to Desktop Main over its private parent port. Only Main
 accesses the system key store. Neither IPC path carries the master key or logs
 credential values. MCP OAuth storage and endpoint routing share this delegated
 store; an unavailable Host must not fall back to direct OS key-store access.
-Standalone CLI retains its own OS identity and caches key access (including a
-denial) for the process lifetime; after unlocking, restart the CLI to retry.
+Standalone CLI retains its own OS identity. On Linux, the standalone entrypoint enables private-file fallback before
+any credential access: an unbound directory may create a private `credential-secret` when Secret Service is unavailable.
+An existing file is discovered on every launch without a desktop process or environment override. Existing OS-bound
+ciphertext remains bound to its original key; failure never silently replaces that key. Protocol/desktop-hosted and
+plugin-host invocations do not enable this standalone policy. macOS and Windows retain their OS-store behavior.
+
+This changes encryption at rest, not remote authentication: persist the long-lived Z.ai platform JWT, use it across
+process restarts without another OAuth exchange, and derive short-lived project keys as needed. Honor the server's
+actual expiry and revocation; do not impose a new local 180-day timeout.
 
 The ZAI OAuth session keys are:
 
