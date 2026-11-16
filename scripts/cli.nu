@@ -47,7 +47,7 @@ def step [msg: string] { print $"==> ($msg)" }
 def "main deps" [] {
   step 'pnpm install'
   cd $root
-  with-env {ELECTRON_SKIP_BINARY_DOWNLOAD: '1'} { ^pnpm install --frozen-lockfile }
+  with-env {ELECTRON_SKIP_BINARY_DOWNLOAD: '1'} { ^pnpm install --frozen-lockfile --child-concurrency=1 }
 }
 
 # the CLI bundle, and the workspace packages the executable packs beside it
