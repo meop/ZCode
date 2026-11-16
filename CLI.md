@@ -5,24 +5,41 @@ zcode-cli is ZCode's CLI and TUI, built by [meop/ZCode](https://github.com/meop/
 runtime asset inside, for every os and arch, released for each upstream ZCode release with custom patches for running
 it on its own, without the desktop app.
 
+## Status of 3.18.2
+
+Based on upstream tag `v3.18.2` (`fec97590`), with `VERSION=3.18.2`. The working 3.17.2 features and the useful
+3.18.0 port changes are carried forward. The first 3.18.0 attempt's missing-model and shutdown-negotiation failures
+were not reproduced: a packaged Linux x64 CLI using an isolated copy of the existing configuration selected its default
+model, completed a real prompt and exited zero. A separate fresh-HOME PTY passed `/help`, `/new`, `/exit` and terminal
+title checks. Original credentials/configuration were verified unchanged; no global binary was replaced.
+
+Upstream's newer credential store keeps its async cipher, recovery-generation guard and transactional session writes.
+Our platform-JWT compare-and-save now uses that existing conditional-update transaction. Native resource sampling and
+protocol privacy remain upstream-owned; the standalone hook adds local process correlation and event-store pruning.
+The executable version now reads the fork's VERSION; service-facing app version remains the upstream GUI version.
+
+Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 279 adapter, 132 bootstrap,
+239 CLI, 230 TUI and 135 core regressions passed (1,015 total). All 34 CLI typecheck tasks, root `pnpm typecheck`
+(with a 4 GiB JS heap ceiling), root lint and architecture checks passed. Lint reports 538 warnings and zero errors.
+Other platform runtime checks and a long authenticated memory soak are not part of this local validation. CI builds
+all six release targets; the release assets and workflow result are the publication record.
+
 ## Branches and releases
 
 - **`cli/v<upstream>`**: one branch per upstream release (`cli/v3.17.2`), holding this fork's commits on top of that
-  release's upstream commit. Public prebuilt GUI releases establish upstream versions: a source-sync commit whose
-  package version matches the public GUI release is a valid base even if upstream has not tagged it. Record its SHA;
-  do not wait for a tag. Version 3.18.2 is a real upstream release. Older working branches can serve maintenance fixes;
-  discard a superseded, unfinished port only after its replacement works.
-- **`VERSION`** is the upstream release the branch is built on (`3.17.2`). A push to a `cli/**` branch whose
+  release's tagged upstream commit. Upstream tags are the release signal; untagged source-sync commits do not
+  automatically qualify as supported releases. Older working branches can serve maintenance fixes; discard a
+  superseded, unfinished port only after its replacement works.
+- **`VERSION`** supplies the executable version, including its pre-release suffix. The app version sent to upstream
+  services remains the base GUI release from root `package.json`. A push to a `cli/**` branch whose
   `VERSION` has no release yet builds every target and releases that commit, tagged `zcode-cli-v<VERSION>` and titled
   `v<VERSION>`. The tag carries the project's name because the fork keeps upstream's own `v<semver>` tags. A
   `VERSION` with a pre-release suffix (`3.18.0-rc.1`) is published as a pre-release, which ghpm's latest skips.
 - **A new upstream release** (the `upstream` workflow opens an issue for one): make `cli/v<new>` from the new
-  upstream release commit. Review the latest working stack and any unfinished newer port, then adapt their behavior
-  to the new source. Cherry-picking is a starting point, not the acceptance criterion. Preserve working older releases. Release pre-releases (`<new>-rc.1`, `-rc.2`, …) while it
-  settles, and `<new>` at the branch's tip once it works.
+  tagged upstream release commit. Review the latest working stack and any unfinished newer port, then adapt their
+  behavior to the new source. Cherry-picking is a starting point, not the acceptance criterion. Preserve working older
+  releases. Release pre-releases (`<new>-rc.1`, `-rc.2`, …) while it settles, and `<new>` once it works.
 - The default branch is the newest working `cli/v*`, since GitHub runs the scheduled `upstream` workflow from there.
-- `local/stability-3.17.2` is an unpublished local candidate based on the `3.17.2` release stack, with `VERSION`
-  set to `3.17.2-rc.2`. It has not been released or installed.
 - ghpm installs the releases as `zcode` (`uri = "github.com/meop/ZCode"`).
 
 ## Maintenance policy
@@ -46,7 +63,7 @@ When rewriting a published fork branch, keep a local backup, verify its remote t
 and compare the final source tree. Existing release tags retain their historical source; a new source release needs a
 new VERSION. Keep each version branch on its own upstream base.
 
-## The 3.17.2 patch stack
+## Carried behavior from 3.17.2
 
 1. **Build and release**: standalone executables, workflows, VERSION, tooling and maintenance documentation.
 2. **Z.ai auth**: retain the platform JWT and define the app release in CLI builds.
@@ -61,6 +78,9 @@ new VERSION. Keep each version branch on its own upstream base.
 11. **Terminal title**: project and active session.
 12. **Compaction**: configurable automatic token ceiling.
 13. **Bash cwd recovery**: recover when the retained directory was removed.
+
+The daily upstream watcher checks tags and opens an issue for a missing version branch. It does not automatically
+create or port a branch or open a PR.
 
 ## Comparison repositories
 
@@ -80,14 +100,14 @@ connected-plugin stability. Compare process-tree PSS, native allocations and JS 
 
 `scripts/cli.nu`, run from anywhere with nu:
 
-| command | does |
-| --- | --- |
-| `all` | `deps`, `build`, `bin` for this machine, `install` |
-| `deps` | `pnpm install --frozen-lockfile`, skipping the desktop app's Electron download |
-| `build` | the CLI bundle and every package of its app, and `@zcode/shared`'s dist |
-| `bin` | the executable for this machine; `--targets a,b` or `--all` for others |
-| `package` | each built target as `dist/release/zcode-cli-<VERSION>-<os>-<arch>.tar.gz` (`.zip` for windows) |
-| `install [file]` | a binary to `~/.local/bin/zcode` (`zcode.exe` on windows); this machine's build when no file |
+| command          | does                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `all`            | `deps`, `build`, `bin` for this machine, `install`                                              |
+| `deps`           | `pnpm install --frozen-lockfile`, skipping the desktop app's Electron download                  |
+| `build`          | the CLI bundle and every package of its app, and `@zcode/shared`'s dist                         |
+| `bin`            | the executable for this machine; `--targets a,b` or `--all` for others                          |
+| `package`        | each built target as `dist/release/zcode-cli-<VERSION>-<os>-<arch>.tar.gz` (`.zip` for windows) |
+| `install [file]` | a binary to `~/.local/bin/zcode` (`zcode.exe` on windows); this machine's build when no file    |
 
 Binaries land in `apps/zcode-cli/packages/cli/dist` as `zcode-<os>-<arch>`, `.exe` on windows, about 220 to 270 MB.
 

@@ -4,7 +4,7 @@
  */
 export const cliMemoryDiagnosticsModule = {
   id: "cli-memory-diagnostics",
-  requires: ["shared", "zcode-cli", "agent-crash-diagnostic"],
+  requires: ["shared", "zcode-cli", "agent-crash-diagnostic", "fork-process-sampling"],
   provides: ["cli-memory-diagnostics"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;
