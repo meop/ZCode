@@ -126,6 +126,20 @@ export const readRootPackageVersion = async ({ root = projectRoot } = {}) => {
   return packageJson.version;
 };
 
+export const readCliReleaseVersion = async ({ root = projectRoot } = {}) => {
+  let version;
+  try {
+    version = (await readFile(resolve(root, "../../VERSION"), "utf8")).trim();
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return readRootPackageVersion({ root });
+  }
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error("VERSION must contain the CLI release version.");
+  }
+  return version;
+};
+
 export const resolveBuildOptions = (args = [], env = process.env) => {
   const desktopAgent = args.includes(desktopAgentBuildFlag);
   const e2eCoverage = env.ZCODE_E2E_COVERAGE === "1";
@@ -162,7 +176,7 @@ export const buildCli = async ({
   minify = false,
   sourcemap = true,
   env = process.env,
-  version = readRootPackageVersion({
+  version = readCliReleaseVersion({
     root: rootDirectory,
   }),
 } = {}) => {

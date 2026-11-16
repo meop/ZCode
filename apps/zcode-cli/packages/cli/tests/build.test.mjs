@@ -10,6 +10,7 @@ import {
   assertZodBundleIdentity,
   createZodDedupePlugin,
   readRootPackageVersion,
+  readCliReleaseVersion,
   resolveBuildAliases,
   resolveBuildOptions,
   resolveBuildExternal,
@@ -281,4 +282,21 @@ test("request security subpath bundles through its edition entry", async () => {
 
 test("CLI leaves system keyring native loading to the runtime", () => {
   assert.ok(resolveBuildExternal().includes("@napi-rs/keyring"));
+});
+
+test("CLI release version uses the fork VERSION while keeping upstream package versions intact", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "zcode-release-version-"));
+  const root = join(directory, "apps", "zcode-cli");
+  try {
+    await mkdir(root, { recursive: true });
+    await writeFile(join(root, "package.json"), JSON.stringify({ version: "0.17.1" }));
+    assert.equal(await readCliReleaseVersion({ root }), "0.17.1");
+    await writeFile(join(directory, "VERSION"), "3.18.2-rc.1\n");
+    assert.equal(await readCliReleaseVersion({ root }), "3.18.2-rc.1");
+    assert.equal(await readRootPackageVersion({ root }), "0.17.1");
+    await writeFile(join(directory, "VERSION"), "invalid");
+    await assert.rejects(readCliReleaseVersion({ root }), /VERSION/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
