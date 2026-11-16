@@ -1,12 +1,11 @@
-# Opens an issue when upstream ZCode has a release with no cli/v<upstream> branch here yet: its newest tag, and the
-# version its latest source sync names (Z.ai publishes the source shortly before tagging). The branch is made by hand,
-# by cherry-picking the newest branch's stack onto the new release and testing as it goes (CLI.md). It runs from the
-# default branch, where GitHub runs scheduled workflows.
+# Opens an issue when upstream tags a release with no cli/v<upstream> branch here yet.
+# Porting and verification happen in the version worktree before publication (CLI.md).
+# Scheduled workflows run from the default branch.
 name: upstream
 
 on:
   schedule:
-    - cron: '23 7 * * *'
+    - cron: "23 7 * * *"
   workflow_dispatch:
 
 permissions:
@@ -27,9 +26,6 @@ jobs:
           versions=()
           tag=$(gh api "repos/$UPSTREAM/tags?per_page=1" --jq '.[0].name // empty')
           [ -n "$tag" ] && versions+=("${tag#v}")
-          synced=$(gh api "repos/$UPSTREAM/commits?per_page=1" --jq '.[0].commit.message' \
-            | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$synced" ] && versions+=("${synced#v}")
           for version in $(printf '%s\n' "${versions[@]}" | sort -u); do
             branch="cli/v$version"
             if gh api "repos/$GITHUB_REPOSITORY/branches/$branch" > /dev/null 2>&1; then
@@ -43,5 +39,5 @@ jobs:
               continue
             fi
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body \
-              "Upstream $UPSTREAM has v$version (tagged: $( [ "$tag" = "v$version" ] && echo yes || echo 'not yet, source synced')). Make \`$branch\` from it by cherry-picking the newest cli/v* branch's commits, with fixups and tests, as CLI.md describes."
+              "Upstream $UPSTREAM has v$version (tag: $tag). Make \`$branch\` from it by cherry-picking the newest cli/v* branch's commits, with fixups and tests, as CLI.md describes."
           done
