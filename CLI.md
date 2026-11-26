@@ -7,18 +7,19 @@ it on its own, without the desktop app.
 
 ## Status of 4.0.0
 
-Based on upstream tag `v4.0.0` (`a4b44451`), with `VERSION=4.0.0-rc.2` for the next release candidate.
+Based on upstream tag `v4.0.0` (`a4b44451`), with `VERSION=4.0.0-rc.2` for the current release candidate.
 The working 3.18.2 standalone patch stack is carried forward. Upstream's MCP hot reload and workspace trust,
 new browser/runtime flags, ADB shell preparation, proportional compaction output reserve and credential-generation
 write guards are preserved. The configurable compaction ceiling caps the new upstream threshold.
 
 The [3.18.2 → 4.0.0 port comparison](docs/cli-ports/4.0.0.md) pins both branches and upstream bases, maps every
 carried commit, records adaptations and corrected failures, and gives validation commands, results and remaining limits.
-Local validation passed 1,311 selected regressions, typechecks, lint and Linux runtime checks. CI built all six targets
+Initial port validation passed 1,311 selected regressions, typechecks, lint and Linux runtime checks. CI built all six targets
 and published [4.0.0-rc.1](https://github.com/meop/ZCode/releases/tag/zcode-cli-v4.0.0-rc.1).
 The [active resource audit](docs/cli-ports/4.0.0-resource-audit.md) subsequently found three additional retention
 defects (plugin-name cache, empty subscription containers and retired watcher failures), requiring an expanded
-corrective stack for rc.2. It also records unresolved transcript/task/MCP configuration history retention.
+corrective stack, now published in [4.0.0-rc.2](https://github.com/meop/ZCode/releases/tag/zcode-cli-v4.0.0-rc.2)
+after all six CI builds passed. It also records unresolved transcript/task/MCP configuration history retention.
 Other-platform runtime checks and a long authenticated memory soak remain untested locally.
 
 ## Branches and releases

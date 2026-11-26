@@ -562,7 +562,7 @@ it("retires failure records when their targets leave scope and retries a reintro
     load: async () => ({ files, commit() {} }),
     bounds: [root],
     label: "MCP configuration",
-    bindTimeoutMs: 20,
+    bindTimeoutMs: SHORT_BIND_TIMEOUT_MS,
   });
   try {
     expect(anchored(root)).toHaveLength(1);
