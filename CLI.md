@@ -5,29 +5,33 @@ zcode-cli is ZCode's CLI and TUI, built by [meop/ZCode](https://github.com/meop/
 runtime asset inside, for every os and arch, released for each upstream ZCode release with custom patches for running
 it on its own, without the desktop app.
 
-## Status of 3.18.2
+## Status of 4.0.0
 
-Based on upstream tag `v3.18.2` (`fec97590`), with `VERSION=3.18.2`. The working 3.17.2 features and the useful
-3.18.0 port changes are carried forward. The first 3.18.0 attempt's missing-model and shutdown-negotiation failures
-were not reproduced: a packaged Linux x64 CLI using an isolated copy of the existing configuration selected its default
-model, completed a real prompt and exited zero. A separate fresh-HOME PTY passed `/help`, `/new`, `/exit` and terminal
-title checks. Original credentials/configuration were verified unchanged; no global binary was replaced. The final packaged prompt
-check also passed using automatic private-file discovery with no secret environment override.
+Based on upstream tag `v4.0.0` (`a4b44451`), with `VERSION=4.0.0-rc.1` for the initial release candidate.
+The working 3.18.2 standalone patch stack is carried forward. Upstream's MCP hot reload and workspace trust,
+new browser/runtime flags, ADB shell preparation, proportional compaction output reserve and credential-generation
+write guards are preserved. The configurable compaction ceiling caps the new upstream threshold.
 
-Upstream's newer credential store keeps its async cipher, recovery-generation guard and transactional session writes.
-Our platform-JWT compare-and-save now uses that existing conditional-update transaction. Native resource sampling and
-protocol privacy remain upstream-owned; the standalone hook adds local process correlation and event-store pruning.
-The executable version now reads the fork's VERSION; service-facing app version remains the upstream GUI version.
+Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 212 adapter/credential,
+139 bootstrap, 158 core, 230 TUI and 569 CLI regressions passed (1,308 total). The CLI suite runs files serially
+because its bundle tests share the output directory. The login-polling fixture now supplies the long-lived
+platform JWT, and the entrypoint loads credential-security lazily so plugin hosts avoid Agent initialization.
+The native-pnpm lint launcher regression passed. All 34 CLI typecheck tasks, root typecheck (4 GiB heap ceiling),
+root lint and architecture checks passed. Root lint reports 537 warnings and zero errors; CLI lint reports
+87 warnings, zero errors and 3 accepted pristine upstream line-count diagnostics. A targeted TUI Hooks scan
+found four existing diagnostics in unchanged hooks; carried usage/title/resource hooks add none.
 
-Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 279 adapter, 132 bootstrap,
-240 CLI, 230 TUI, 135 core and 50 credential-security regressions passed (1,066 total). All 34 CLI typecheck tasks, root `pnpm typecheck`
-(with a 4 GiB JS heap ceiling), root lint and architecture checks passed. Lint reports 538 warnings and zero errors.
-Other platform runtime checks and a long authenticated memory soak are not part of this local validation. CI builds
-all six release targets; the release assets and workflow result are the publication record.
+The final packaged binary selected the configured model, completed a real prompt and exited zero with isolated
+copies of the existing credentials/configuration and automatic private-file key discovery. Original files were
+verified unchanged. A fresh-HOME PTY passed `/help`, `/new`, `/exit` and terminal-title checks.
+The pre-push gate passed, including 61 architecture regressions and schema checks; its engineering selector
+skipped execution by policy after selecting the entire 182-file suite. The standalone regressions above ran explicitly.
+Other-platform runtime checks and a long authenticated memory soak remain untested locally.
+Older release branches and binaries remain available. Pushing this candidate triggers CI builds for all six release targets.
 
 ## Branches and releases
 
-- **`cli/v<upstream>`**: one branch per upstream release (`cli/v3.17.2`), holding this fork's commits on top of that
+- **`cli/v<upstream>`**: one branch per upstream release (`cli/v4.0.0`), holding this fork's commits on top of that
   release's tagged upstream commit. Upstream tags are the release signal; untagged source-sync commits do not
   automatically qualify as supported releases. Older working branches can serve maintenance fixes; discard a
   superseded, unfinished port only after its replacement works.
@@ -56,7 +60,7 @@ previously shared code is acceptable. Preserve host-owned behavior for GUI calle
 
 Before retiring an unfinished version port, carry forward its useful changes and investigate its recorded failures.
 The first 3.18.0 port identified missing standalone model selection, an MCP negotiation rejection during early shutdown,
-and a credential-store migration to OS-keyring/headless-secret encryption. Verify these on 3.18.2 rather than assuming
+and a credential-store migration to OS-keyring/headless-secret encryption. Verify these on each new release rather than assuming
 clean cherry-picks imply a working app. Credential migration tests must use an isolated HOME and copied data, since
 `ZCODE_DATA_BASE_DIR` does not redirect every credential path and 3.17.2 cannot read the newer encrypted values.
 
@@ -166,7 +170,7 @@ Login still persists the long-lived Z.ai platform JWT and reuses it across launc
 keys as needed. The server decides its expiry (often described as about 180 days); the fork does not promise or impose
 that duration. A valid cached JWT avoids the one-hour OAuth-token exchange on every launch.
 
-3.18 uses newer encryption at rest for `~/.zcode/v2/credentials.json`. On Linux, our standalone entrypoint enables a
+3.18 and later use newer encryption at rest for `~/.zcode/v2/credentials.json`. On Linux, our standalone entrypoint enables a
 private `credential-secret` file fallback when a fresh directory has no usable Secret Service/keyring. Later launches
 discover that file automatically; no GUI, desktop session, or secret environment variable is required. Keep the secret
 with its encrypted credential file. Existing OS-bound stores retain their original key source; never silently switch
@@ -177,7 +181,7 @@ The headless regression starts two fresh CLI processes with an isolated HOME and
 verifies a 0600 secret and encrypted credential file, then reopens the cached login without a keyring.
 
 For the first push of a new version branch, upstream's engineering hook assumes its internal `origin/staging` exists.
-Use the actual tagged base explicitly, for example `ZCODE_AFFECTED_TEST_BASE=v3.18.2 git push -u fork cli/v3.18.2`.
+Use the actual tagged base explicitly, for example `ZCODE_AFFECTED_TEST_BASE=v4.0.0 git push -u fork cli/v4.0.0`.
 This runs the affected-test gate against our real upstream base.
 
 ## Launch model and effort
