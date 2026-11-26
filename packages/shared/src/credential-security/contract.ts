@@ -29,8 +29,10 @@ export interface SystemCredentialCipherOptions {
   env?: Readonly<Record<string, string | undefined>>;
   keyStore?: CredentialKeyStore;
 }
-/** Desktop Main 开启私有文件密钥回退与自动重置时的观察入口；回调不接收密钥或凭据值。 */
+/** 私有文件密钥回退的策略及观察入口；回调不接收密钥或凭据值。 */
 export interface PrivateFileKeyFallbackOptions {
+  /** Desktop 默认自动重置；独立 CLI 只允许未绑定目录回退，必须显式传 false。 */
+  resetBoundStore?: boolean;
   /** `diagnostic` 是触发回退的系统库失败原因。 */
   onFallback?(diagnostic: CredentialKeyFailureDiagnostic): void;
   /** 已绑定目录的自动重置在后台结束时调用一次（含放弃与失败）。 */

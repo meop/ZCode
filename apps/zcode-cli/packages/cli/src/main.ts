@@ -67,7 +67,7 @@ async function main(): Promise<void> {
     if (process.platform === "linux" && !isProtocol && !isPluginHostInvocation(argv)) {
       // 凭据模块会求值 shared 根入口；插件宿主必须先分流，避免提前初始化 Agent 依赖。
       const { enablePrivateFileKeyFallback } = await import("@zcode/shared/credential-security");
-      enablePrivateFileKeyFallback();
+      enablePrivateFileKeyFallback({ resetBoundStore: false });
     }
     if (argv[0] !== STORAGE_MIGRATION_COMMAND && !argv.includes("--prepare-storage"))
       Object.assign(process.env, await ensureSeaRuntimeTools());

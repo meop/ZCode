@@ -371,3 +371,5 @@ Z.AI 前置业务 JWT 的 `ZaiBusinessTokenCache` 采用相同的临时故障分
 中国区桌面登录使用 `oauth:zai_cn:*`，关联材料使用 `oauth:linked_bigmodel`。独立 CLI 本期不新增中国区交互入口；开始另一条全局登录或退出时，必须在同一事务删除这些旧会话字段，避免旧关联跨账号保留。
 
 Standalone credential fallback is initialized lazily after entrypoint routing. Official plugin-host processes do not load credential-security or agent modules before loading their plugin; the plugin-host-entry regression enforces this for Node and desktop bundles.
+
+Standalone Linux entrypoints enable private-file fallback with `resetBoundStore: false`. Fresh, unbound stores can create their private key, but an unavailable key for an existing OS-bound store or an invalid managed secret fails without resetting, backing up, clearing or rebinding the store. Desktop keeps its existing automatic-reset default. The shared cipher owns key resolution and reset admission; CLI selects its policy before the first credential read.

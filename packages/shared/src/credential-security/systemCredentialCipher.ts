@@ -46,14 +46,14 @@ interface KeyMaterial {
 }
 const systemKeys = new Map<string, Promise<KeyMaterial>>();
 const injectedSystemKeys = new WeakMap<CredentialKeyStore, Map<string, Promise<KeyMaterial>>>();
-// 默认关闭；只有 Desktop Main 开启（全平台）。Server 与独立 CLI 保持显式配置要求。
+// 默认关闭；Desktop Main 开启完整策略。独立 Linux CLI 只开启新目录回退，Server 保持显式配置要求。
 let privateFileKeyFallback: PrivateFileKeyFallbackOptions | undefined;
 let keyFailureObserver: CredentialKeyFailureObserver | undefined;
 
 /**
- * Desktop Main 专用（全平台）：系统库不可用时，尚未绑定任何来源的凭据目录改用同目录私有
+ * Desktop Main（全平台）及独立 Linux CLI：系统库不可用时，尚未绑定任何来源的凭据目录改用同目录私有
  * credential-secret；已绑定来源的目录在可判定的密钥丢失后由后台自动重置（见
- * resetBoundCredentialStore）。来源决策按进程共享，必须早于首次凭据访问；
+ * resetBoundCredentialStore）；CLI 通过 resetBoundStore: false 保留已绑定目录。来源决策按进程共享，必须早于首次凭据访问；
  * 已有加载结果时返回 false 且不改变行为，避免同一进程出现两种来源规则。
  */
 export function enablePrivateFileKeyFallback(options: PrivateFileKeyFallbackOptions = {}): boolean {
@@ -427,7 +427,14 @@ export function createSystemCredentialCipher(
       // 不能在本次请求里重置：请求可能来自正持有凭据文件锁的 Host，在这里取文件锁会互相等待。
       const diagnostic = diagnosticOf(error);
       const fallback = privateFileKeyFallback;
-      if (fallback && lockAcquired && diagnostic && RESET_STAGES.has(diagnostic.stage)) {
+      // 独立 CLI 只启用新目录的私有密钥回退；桌面重置策略不能随 helper 复用而清空共享登录。
+      if (
+        fallback &&
+        fallback.resetBoundStore !== false &&
+        lockAcquired &&
+        diagnostic &&
+        RESET_STAGES.has(diagnostic.stage)
+      ) {
         void resetBoundCredentialStore({
           filePath,
           cache,

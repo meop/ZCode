@@ -12,10 +12,12 @@ The working 3.18.2 standalone patch stack is carried forward. Upstream's MCP hot
 new browser/runtime flags, ADB shell preparation, proportional compaction output reserve and credential-generation
 write guards are preserved. The configurable compaction ceiling caps the new upstream threshold.
 
-Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 212 adapter/credential,
-139 bootstrap, 158 core, 230 TUI and 569 CLI regressions passed (1,308 total). The CLI suite runs files serially
+Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 215 adapter/credential,
+139 bootstrap, 158 core, 230 TUI and 569 CLI regressions passed (1,311 total). The CLI suite runs files serially
 because its bundle tests share the output directory. The login-polling fixture now supplies the long-lived
 platform JWT, and the entrypoint loads credential-security lazily so plugin hosts avoid Agent initialization.
+Standalone fallback explicitly disables 4.0.0's Desktop automatic-reset policy: missing OS keys and invalid private
+keys preserve the bound credential store. Three regressions cover fresh fallback and both bound-store failures.
 The native-pnpm lint launcher regression passed. All 34 CLI typecheck tasks, root typecheck (4 GiB heap ceiling),
 root lint and architecture checks passed. Root lint reports 537 warnings and zero errors; CLI lint reports
 87 warnings, zero errors and 3 accepted pristine upstream line-count diagnostics. A targeted TUI Hooks scan

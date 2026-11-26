@@ -75,3 +75,5 @@ CREDENTIAL_SECURE_STORAGE_UNAVAILABLE 拒绝且不写盘。磁盘上已有的值
 observeCredentialKeyFailures 注册进程级观察者，每次默认密钥加载失败只通知一次，
 与失败缓存同一时机；显式 KeyStore 注入不通知。Desktop Main 在所有平台记录 warn。
 诊断不进入凭据桥。规格见上述 spec 的“密钥加载失败诊断”。
+
+Fork standalone policy: `PrivateFileKeyFallbackOptions.resetBoundStore` defaults to true for existing Desktop callers. The standalone Linux CLI explicitly passes false, which admits fresh private-file fallback but never schedules `resetBoundCredentialStore` on a key failure. Failed bound stores preserve their credentials, source markers, secret files and recovery generation. Server behavior remains unchanged.
