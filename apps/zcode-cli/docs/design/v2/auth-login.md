@@ -369,3 +369,5 @@ Z.AI 前置业务 JWT 的 `ZaiBusinessTokenCache` 采用相同的临时故障分
 共享换证的生命周期属于 resolver/cache owner：Key ID 定位、PAT 签发/刷新/401 恢复与业务 JWT 换证 HTTP 都不携带单个调用方 signal，也不携带 context.abortSignal；保留 trace/logger，每次 HTTP 请求设置 15 秒超时。`resolve` 与 `resolveMaterial` 为调用方提供独立可取消等待，提前取消不发请求，等待中取消及时拒绝且移除监听器；不能让一个会话取消影响其他等待者或清空有效缓存。所有等待者退出后底层任务仍有超时，晚到失败必须消费；clear/登录代次保护不变。验收覆盖首个/后续等待者取消、并发共享、旧 PAT 刷新、401 恢复、Z.AI JWT 刷新、全员取消后的成功/失败、监听器清理和 logout 竞态。
 
 中国区桌面登录使用 `oauth:zai_cn:*`，关联材料使用 `oauth:linked_bigmodel`。独立 CLI 本期不新增中国区交互入口；开始另一条全局登录或退出时，必须在同一事务删除这些旧会话字段，避免旧关联跨账号保留。
+
+Standalone credential fallback is initialized lazily after entrypoint routing. Official plugin-host processes do not load credential-security or agent modules before loading their plugin; the plugin-host-entry regression enforces this for Node and desktop bundles.

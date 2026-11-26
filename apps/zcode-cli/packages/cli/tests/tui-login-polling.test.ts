@@ -44,6 +44,7 @@ const ready = (providerId: "zai" | "bigmodel") => ({
 });
 const TEST_PROJECT_MATERIAL = {
   token: "test-project-token",
+  zaiBusinessToken: "test-platform-token",
   apiKeyId: "test-api-key-id",
   organizationId: "test-org",
   projectId: "test-project",
@@ -201,6 +202,8 @@ for (const providerId of ["zai", "bigmodel"] as const) {
     });
     if (providerId === "bigmodel")
       assert.equal(await f.store.load(keys.bigmodelRefreshToken), "test-refresh-token");
+    else
+      assert.equal(await f.store.load(keys.zaiAccessToken), TEST_PROJECT_MATERIAL.zaiBusinessToken);
   });
 }
 
