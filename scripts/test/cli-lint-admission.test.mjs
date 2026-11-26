@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { classifyLintDiagnostics, parseLintCommand } from "../cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  lintPackageManagerCommand,
+} from "../cli-lint-admission.mjs";
 
 test("只接纳原样上游的行数诊断，其他错误与修改过的文件仍阻断", () => {
   const diagnostics = [
@@ -31,4 +35,14 @@ test("保留包原有参数；不默默绕过未知或复合命令", () => {
     "oxlint --format text src",
   ])
     assert.throws(() => parseLintCommand(command), /不支持/);
+});
+
+test("CLI lint supports native pnpm and JavaScript package-manager entrypoints", () => {
+  for (const pnpm of ["/tools/pnpm", "C:\\tools\\pnpm.exe"])
+    assert.deepEqual(lintPackageManagerCommand(pnpm, "/tools/node"), { file: pnpm, args: [] });
+  for (const pnpm of ["/tools/pnpm.cjs", "C:\\tools\\pnpm.js"])
+    assert.deepEqual(lintPackageManagerCommand(pnpm, "/tools/node"), {
+      file: "/tools/node",
+      args: [pnpm],
+    });
 });

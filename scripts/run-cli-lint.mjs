@@ -6,7 +6,11 @@ import { dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPolicy } from "./architecture/policy.mjs";
 import { pristineUpstreamFiles } from "./architecture/upstream-admission.mjs";
-import { classifyLintDiagnostics, parseLintCommand } from "./cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  lintPackageManagerCommand,
+} from "./cli-lint-admission.mjs";
 
 const exec = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -41,7 +45,9 @@ async function main() {
       if (!pnpm) throw new Error("请通过 pnpm lint 运行 CLI lint");
       let result;
       try {
-        result = await exec(process.execPath, [pnpm, "exec", "oxlint", ...args], {
+        // 原生 pnpm 不是 JavaScript，交给 Node 执行会在 ELF/PE 文件头处报语法错误。
+        const command = lintPackageManagerCommand(pnpm, process.execPath);
+        result = await exec(command.file, [...command.args, "exec", "oxlint", ...args], {
           cwd,
           maxBuffer: 16 * 1024 * 1024,
         });

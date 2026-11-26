@@ -22,3 +22,8 @@ export function classifyLintDiagnostics(diagnostics, { relativeDirectory, pristi
   }
   return { accepted, errors, warnings };
 }
+
+/** npm_execpath 既可能是 JS 入口，也可能是 pnpm 的原生可执行文件。 */
+export function lintPackageManagerCommand(pnpm, node) {
+  return /\.[cm]?js$/iu.test(pnpm) ? { file: node, args: [pnpm] } : { file: pnpm, args: [] };
+}
