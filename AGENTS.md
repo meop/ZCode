@@ -92,3 +92,8 @@ builds the CLI as a single executable and patches it to run without the desktop 
 (`cli/v<upstream>`, one clean patch stack per upstream release), how `VERSION` drives releases (tagged
 `zcode-cli-v<VERSION>`), how the next branch is made by cherry-picking this one's commits, `scripts/cli.nu`, and each
 patch.
+
+For every new `cli/v<upstream>` port, check in `docs/cli-ports/<upstream>.md` and link it from `CLI.md`. Follow the
+comparison/evidence requirements in `CLI.md`'s maintenance policy: pinned old/new upstream and fork revisions,
+every feature's disposition and port decisions, new fixes, actual validation results, CI/release evidence and untested
+limits. Carry earlier records forward. A status paragraph or clean cherry-pick is not a substitute for this record.

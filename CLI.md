@@ -12,24 +12,11 @@ The working 3.18.2 standalone patch stack is carried forward. Upstream's MCP hot
 new browser/runtime flags, ADB shell preparation, proportional compaction output reserve and credential-generation
 write guards are preserved. The configurable compaction ceiling caps the new upstream threshold.
 
-Validation on Linux x64: sequential workspace build, shared build and SEA packaging; 215 adapter/credential,
-139 bootstrap, 158 core, 230 TUI and 569 CLI regressions passed (1,311 total). The CLI suite runs files serially
-because its bundle tests share the output directory. The login-polling fixture now supplies the long-lived
-platform JWT, and the entrypoint loads credential-security lazily so plugin hosts avoid Agent initialization.
-Standalone fallback explicitly disables 4.0.0's Desktop automatic-reset policy: missing OS keys and invalid private
-keys preserve the bound credential store. Three regressions cover fresh fallback and both bound-store failures.
-The native-pnpm lint launcher regression passed. All 34 CLI typecheck tasks, root typecheck (4 GiB heap ceiling),
-root lint and architecture checks passed. Root lint reports 537 warnings and zero errors; CLI lint reports
-87 warnings, zero errors and 3 accepted pristine upstream line-count diagnostics. A targeted TUI Hooks scan
-found four existing diagnostics in unchanged hooks; carried usage/title/resource hooks add none.
-
-The final packaged binary selected the configured model, completed a real prompt and exited zero with isolated
-copies of the existing credentials/configuration and automatic private-file key discovery. Original files were
-verified unchanged. A fresh-HOME PTY passed `/help`, `/new`, `/exit` and terminal-title checks.
-The pre-push gate passed, including 61 architecture regressions and schema checks; its engineering selector
-skipped execution by policy after selecting the entire 182-file suite. The standalone regressions above ran explicitly.
+The [3.18.2 → 4.0.0 port comparison](docs/cli-ports/4.0.0.md) pins both branches and upstream bases, maps every
+carried commit, records adaptations and corrected failures, and gives validation commands, results and remaining limits.
+Local validation passed 1,311 selected regressions, typechecks, lint and Linux runtime checks. CI built all six targets
+and published [4.0.0-rc.1](https://github.com/meop/ZCode/releases/tag/zcode-cli-v4.0.0-rc.1).
 Other-platform runtime checks and a long authenticated memory soak remain untested locally.
-Older release branches and binaries remain available. Pushing this candidate triggers CI builds for all six release targets.
 
 ## Branches and releases
 
@@ -50,6 +37,17 @@ Older release branches and binaries remain available. Pushing this candidate tri
 - ghpm installs the releases as `zcode` (`uri = "github.com/meop/ZCode"`).
 
 ## Maintenance policy
+
+Every new `cli/v<upstream>` branch must check in `docs/cli-ports/<upstream>.md` and link it from the release status
+above. Carry earlier port records forward as history. Keep `CLI.md` as the current operating guide and short status;
+the per-release document is the comparison and evidence record. Create it during the port, then update it with actual
+validation and publication results. Pin the old/new upstream bases and fork commits; a moving branch name alone is
+insufficient. Include the reproducible upstream diff, patch-stack range-diff and fork-to-fork comparison; the disposition
+of every carried feature/commit (unchanged, adapted, replaced by upstream, dropped or deferred, with reasons); new
+fork work and corrected failures; commands, observed results and durable CI/release links; and remaining untested areas.
+Distinguish patch-equivalence, source review, automated tests, manual observations and build-only evidence. Never count
+a skipped check as passed or infer behavior preservation from a clean cherry-pick. Documentation-only follow-ups may
+follow the pinned executable-source commit; do not move an existing release tag to include them.
 
 The goal is a working independent CLI/TUI, not the smallest possible diff against the GUI app. Keep reviewable commits
 by logical feature and fold direct corrections into their feature when practical. Independent follow-up work can have
