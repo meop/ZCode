@@ -105,7 +105,7 @@ it("keeps the confirmed state when the server rejects a subscription", async () 
   await new Promise((resolve) => setTimeout(resolve, 100));
   // 服务端明确拒绝说明远端没有订阅，不能再补发一次退订。
   expect(server.calls).toEqual(["resources/subscribe"]);
-  expect(adapter.resourceSubscriptionCounts?.()).toEqual({ remote: {} });
+  expect(adapter.resourceSubscriptionCounts?.()).toEqual({});
 });
 
 it("logs an unsubscribe only after it was sent", async () => {

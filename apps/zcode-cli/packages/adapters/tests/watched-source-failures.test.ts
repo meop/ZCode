@@ -554,3 +554,29 @@ it("trips a shared anchor once when its stat hangs after succeeding and never st
     entry.close();
   }
 });
+
+it("retires failure records when their targets leave scope and retries a reintroduced root", async () => {
+  let files = new Set([config]);
+  state.behavior = "never";
+  const entry = await createWatchedEntry({
+    load: async () => ({ files, commit() {} }),
+    bounds: [root],
+    label: "MCP configuration",
+    bindTimeoutMs: 20,
+  });
+  try {
+    expect(anchored(root)).toHaveLength(1);
+    expect(anchored(root)[0]!.closed).toBe(true);
+    state.behavior = "ok";
+    await entry.flush();
+    expect(anchored(root)).toHaveLength(1); // still declared: suppression remains
+    files = new Set();
+    await entry.flush();
+    files = new Set([config]);
+    await entry.flush();
+    expect(anchored(root)).toHaveLength(2);
+    expect(anchored(root)[1]!.closed).toBe(false);
+  } finally {
+    entry.close();
+  }
+});

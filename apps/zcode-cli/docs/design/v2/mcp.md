@@ -314,3 +314,11 @@ Minimum coverage:
 - `/mcp list` formats status without submitting a model prompt.
 - TUI sidebar renders configured MCP servers and their status through the
   app-level status interface.
+
+### Resource-subscription registry retention
+
+The connection-owned registry retains server/URI containers only while they contain pending or committed
+subscribers. Releasing a failed registration, the final subscriber, or a session prefix also removes empty server
+containers. Diagnostic subscription counts omit empty servers. Delayed settlement of a removed registration cannot
+recreate it or delete a newer registration with the same server/URI/subscriber identity. Wire subscribe/unsubscribe,
+connection-generation fences and shared-lease ownership keep their existing semantics.

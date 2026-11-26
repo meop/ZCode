@@ -7,7 +7,7 @@ it on its own, without the desktop app.
 
 ## Status of 4.0.0
 
-Based on upstream tag `v4.0.0` (`a4b44451`), with `VERSION=4.0.0-rc.1` for the initial release candidate.
+Based on upstream tag `v4.0.0` (`a4b44451`), with `VERSION=4.0.0-rc.2` for the next release candidate.
 The working 3.18.2 standalone patch stack is carried forward. Upstream's MCP hot reload and workspace trust,
 new browser/runtime flags, ADB shell preparation, proportional compaction output reserve and credential-generation
 write guards are preserved. The configurable compaction ceiling caps the new upstream threshold.
@@ -16,6 +16,9 @@ The [3.18.2 → 4.0.0 port comparison](docs/cli-ports/4.0.0.md) pins both branch
 carried commit, records adaptations and corrected failures, and gives validation commands, results and remaining limits.
 Local validation passed 1,311 selected regressions, typechecks, lint and Linux runtime checks. CI built all six targets
 and published [4.0.0-rc.1](https://github.com/meop/ZCode/releases/tag/zcode-cli-v4.0.0-rc.1).
+The [active resource audit](docs/cli-ports/4.0.0-resource-audit.md) subsequently found three additional retention
+defects (plugin-name cache, empty subscription containers and retired watcher failures), requiring an expanded
+corrective stack for rc.2. It also records unresolved transcript/task/MCP configuration history retention.
 Other-platform runtime checks and a long authenticated memory soak remain untested locally.
 
 ## Branches and releases
@@ -52,6 +55,28 @@ follow the pinned executable-source commit; do not move an existing release tag 
 The goal is a working independent CLI/TUI, not the smallest possible diff against the GUI app. Keep reviewable commits
 by logical feature and fold direct corrections into their feature when practical. Independent follow-up work can have
 its own commit; there is no minimum commit count or requirement to keep every future branch at 13 commits.
+
+Port review has two responsibilities. Stable product requirements (working standalone auth, identity, commands,
+selection and packaging) need behavior-preservation checks. Corrective work (memory/resource leaks, runaway work,
+retention and lifecycle bugs) needs a fresh defect search in every upstream release. Reapplying the old fix is only
+one check: inspect whether its original cause is gone, moved, duplicated or made worse, and inspect new reachable
+code for analogous hazards. The corrective stack may shrink, change shape or expand; never assume release progress
+or a clean patch application makes it smaller. Retire a fix only with source/regression evidence that upstream now
+provides the required property. Expand the fork when a confirmed new defect needs another fix.
+
+For memory/resource work, trace allocation → owner → bounded lifetime/size → retirement across reloads, session
+replacement, cancellation, failure and shutdown. Inspect caches/maps/sets and retained payloads, subscriptions and
+watchers, timers/retry queues, native resources, child processes and long-lived closures. Include changed upstream
+areas and related unchanged callers, not just files already touched by the fork. Use repeated/churn regressions to
+show that retired state is released and live state still works; do not use timing/heap noise as the only evidence.
+Distinguish unreachable-resource leaks, caches that grow with retired identities, and intentional history retention
+that needs paging/persistence design. Sample JS heap, native allocations and process-tree PSS separately when
+runtime memory measurements are needed. A short idle check is not a long-session soak.
+
+Each port comparison must record this active review separately from patch carry-forward: scope and concrete paths,
+allocation/retirement findings, suspected issues ruled out with reasons, upstream fixes that let us drop old patches,
+new fixes and failing-before/passing-after regressions, and unresolved risks or runtime checks not done. An unchanged
+patch count or passing old tests is insufficient evidence for claiming that the resource audit needed no expansion.
 
 Use upstream improvements when they preserve our behavior, and drop carried fixes that upstream has made unnecessary.
 If upstream moves environment setup, identity, configuration, lifecycle or other previously shared behavior into the GUI

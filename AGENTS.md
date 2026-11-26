@@ -97,3 +97,8 @@ For every new `cli/v<upstream>` port, check in `docs/cli-ports/<upstream>.md` an
 comparison/evidence requirements in `CLI.md`'s maintenance policy: pinned old/new upstream and fork revisions,
 every feature's disposition and port decisions, new fixes, actual validation results, CI/release evidence and untested
 limits. Carry earlier records forward. A status paragraph or clean cherry-pick is not a substitute for this record.
+
+Porting also requires the fresh corrective-defect review in `CLI.md`: preserve stable behavior, but actively search
+the new upstream source and related callers for memory/resource and lifecycle hazards. Reassess old fixes against
+their causes, expand or retire them based on evidence, and record scope, findings, regressions and unresolved risks
+in the per-release comparison. Patch carry-forward alone does not satisfy this review.

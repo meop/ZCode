@@ -3022,3 +3022,8 @@ Activity 实时物化补充：live、严格回放与批量回放统一按 delta 
 ## Standalone Bash cwd recovery
 
 Before spawning, Bash checks its retained cwd through the filesystem port. A missing cwd resets to the workspace root and appends the recovery notice to stderr. The recovered directory also applies to ADB command preparation; timeout reporting, permissions, schemas and background lifecycle remain owned by the existing Bash handler. Regression: core/tests/bash-handler.test.ts.
+
+Standalone resource-retention audit: MCP resource-subscription bookkeeping removes empty server containers after
+last-subscriber release, failed registration or session-prefix cleanup. This affects diagnostic counts and memory
+ownership only; tool schemas, permissions, model output, connection fencing and wire subscription rules are unchanged.
+See design/v2/mcp.md, "Resource-subscription registry retention".

@@ -133,3 +133,15 @@ sequenceDiagram
 | core listing              | 首次逐字节一致；工具表没有 `Skill` 时不发；新增只发新行；变化重发；删除无输出；同内容恢复无输出；预算降级不导致重发；compact 补全与部分补齐；旧记录追加一次；metadata 非法不计入；持久化失败不提交                                                                                                                                                                                                                                                                                                                                        |
 | core runtime              | 普通输入准备时读快照、重试不读；冷恢复不改写已恢复列表；live 与 cold 等价                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Desktop E2E               | `conversation-session-plugin-skill-live-catalog`（已转正）：第 1 轮后新建 workspace skill，第 2 轮请求只追加这一行；工作区配置停用插件后它的 skill 返回 not found                                                                                                                                                                                                                                                                                                                                                                         |
+
+## Standalone port: plugin-name cache lifetime
+
+The live catalog loader owns the plugin-name cache shared by its short-lived discovery adapters. Before each full
+discovery, retain entries only for the currently resolved plugin roots, keyed by plugin identity and absolute root.
+Unchanged roots reuse names; disabling, uninstalling, renaming or replacing roots retires their entries. This bounds
+retention by the current root set instead of every plugin version/path ever observed. Cache eviction affects lookup
+work only; the accepted catalog and atomic-install fallback remain owned by the existing loader/commit path.
+
+Watcher failure and timeout-suppression records belong to the currently declared target ancestry. When a root is
+removed, its unrelated failure records are retired; re-adding that root may bind again. Still-declared failed roots
+keep their existing retry limits. Closing the watched entry clears failure bookkeeping as well as active handles.

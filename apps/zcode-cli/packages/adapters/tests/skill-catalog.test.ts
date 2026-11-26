@@ -428,3 +428,38 @@ it("keeps the system watch handle count independent of the number of skills", as
     syncBuiltinESMExports();
   }
 });
+
+it("bounds the live plugin-name cache by current roots across installation churn", async () => {
+  const { NodeSkillAdapter } = await import("../src/skills/index.js");
+  const discover = NodeSkillAdapter.prototype.discoverSkills;
+  let cache: Map<string, Promise<string | undefined>> | undefined;
+  // 观察真实 loader 传给 adapter 的缓存；不增加产品诊断接口，也不依赖 GC/堆大小的噪声。
+  const spy = vi
+    .spyOn(NodeSkillAdapter.prototype, "discoverSkills")
+    .mockImplementation(function (this: InstanceType<typeof NodeSkillAdapter>, request, options) {
+      cache = (this as unknown as { options: { pluginNameCache?: typeof cache } }).options
+        .pluginNameCache;
+      return discover.call(this, request, options);
+    });
+  try {
+    const loader = createSkillCatalogLoader(fixture.options);
+    for (let version = 0; version < 24; version++) {
+      const name = `version-${version}`;
+      await installPlugin(name);
+      await writeJson(fixture.userConfig, {
+        plugins: { enabledPlugins: { [`${name}@test`]: true } },
+      });
+      const loaded = await loader.load();
+      loaded.commit();
+      expect(names(loaded.outcome)).toEqual([`${name}:demo`]);
+      expect(cache?.size).toBe(1);
+    }
+    await writeJson(fixture.userConfig, { plugins: { enabled: false } });
+    const disabled = await loader.load();
+    disabled.commit();
+    expect(names(disabled.outcome)).toEqual([]);
+    expect(cache?.size).toBe(0);
+  } finally {
+    spy.mockRestore();
+  }
+});

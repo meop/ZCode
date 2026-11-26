@@ -60,6 +60,13 @@ export class NodeSkillAdapter implements SkillPort {
 
     const workingDirectory = resolve(request.workingDirectory);
     const roots = request.roots ?? (await resolveDefaultSkillRoots(workingDirectory, this.options));
+    // 实时目录跨重读复用缓存；插件升级、改名、停用后旧根永远不会再命中，必须随当前根集合退休。
+    const activePluginRoots = new Set(
+      roots.filter((root) => root.source === "plugin").map((root) => this.pluginNameCacheKey(root)),
+    );
+    for (const key of this.pluginNameBySkillRoot.keys()) {
+      if (!activePluginRoots.has(key)) this.pluginNameBySkillRoot.delete(key);
+    }
     const diagnostics: SkillDiagnostic[] = [];
     const selected = new Map<string, SkillMetadata>();
     let totalDiscovered = 0;
@@ -254,10 +261,14 @@ export class NodeSkillAdapter implements SkillPort {
     };
   }
 
+  private pluginNameCacheKey(root: SkillRoot): string {
+    return `${root.pluginId ?? ""}\0${resolve(root.path)}`;
+  }
+
   private async resolvePluginName(root: SkillRoot): Promise<string | undefined> {
     const resolvedRoot = resolve(root.path);
     // 缓存可跨重读共用：键带 pluginId，inline 插件原地改名后 id 变化，不沿用旧名。
-    const key = `${root.pluginId ?? ""}\0${resolvedRoot}`;
+    const key = this.pluginNameCacheKey(root);
     let cached = this.pluginNameBySkillRoot.get(key);
     if (!cached) {
       const pending = readPluginNameForSkillRoot(resolvedRoot);

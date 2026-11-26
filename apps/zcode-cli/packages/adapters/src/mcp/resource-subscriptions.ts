@@ -54,6 +54,8 @@ export class McpResourceSubscriptionRegistry {
     if (!byUri || !subscribers || !subscribers.delete(subscriberKey)) return null;
     if (subscribers.size > 0) return { last: false };
     byUri.delete(uri);
+    // URI 已清空后还保留 server 空容器，会随配置/会话订阅 churn 永久累积历史名称。
+    if (byUri.size === 0) this.byServer.delete(serverName);
     return { last: true };
   }
 
@@ -70,6 +72,7 @@ export class McpResourceSubscriptionRegistry {
           released.push({ serverName, uri });
         }
       }
+      if (byUri.size === 0) this.byServer.delete(serverName);
     }
     return released;
   }

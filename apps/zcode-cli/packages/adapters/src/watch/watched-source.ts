@@ -265,6 +265,12 @@ export async function createWatchedEntry<L extends WatchedLoad>(
       ...[...files].map((file) => [file, false] as const),
       ...[...directories].map((directory) => [directory, true] as const),
     ];
+    // 根目录退出监听范围后，历史失败身份不再承担断路职责；否则配置 churn 会永久保留旧路径。
+    for (const remembered of [failures, abandoned]) {
+      for (const anchor of remembered.keys()) {
+        if (!targets.some(([target]) => contains(anchor, target))) remembered.delete(anchor);
+      }
+    }
     for (const [target, self] of targets) {
       const found = await anchorOf(target, self, statAnchor);
       if (found) wanted.set(found.anchor, `${found.info.dev}:${found.info.ino}`);
@@ -465,6 +471,8 @@ export async function createWatchedEntry<L extends WatchedLoad>(
       quietTimer = undefined;
       for (const watcher of watchers.values()) watcher.controller.abort();
       watchers.clear();
+      failures.clear();
+      abandoned.clear();
       listeners.clear();
     },
   };
